@@ -8,6 +8,7 @@ import pyviz3d.visualizer as vis
 from torch_scatter import scatter_mean
 from collections import defaultdict
 from sklearn.cluster import DBSCAN
+from sklearn import decomposition
 from utils.votenet_utils.eval_det import eval_det
 from datasets.scannet200.scannet200_constants import VALID_CLASS_IDS_200, CLASS_LABELS_200
 import hydra
@@ -75,7 +76,6 @@ class InstanceSegmentation(pl.LightningModule):
                 aux_weight_dict.update({k + f"_{i}": 0. for k, v in weight_dict.items()})
         weight_dict.update(aux_weight_dict)
 
-        self.preds = dict()
         self.bbox_preds = dict()
         self.bbox_gt = dict()
 
@@ -100,7 +100,10 @@ class InstanceSegmentation(pl.LightningModule):
             ids = VALID_CLASS_IDS_200
             lbls = CLASS_LABELS_200
             self._labels = {lbl_id:{'name':lbl} for (lbl_id, lbl) in zip(ids, lbls)}
-
+        
+        self.save_dir = os.path.abspath(os.path.expanduser(self.config.general.mask_save_dir))
+        if not os.path.exists(self.save_dir):
+            os.makedirs(self.save_dir)
 
 
     def forward(self, x, point2segment=None, raw_coordinates=None, is_eval=False):
@@ -211,8 +214,6 @@ class InstanceSegmentation(pl.LightningModule):
                             sorted_masks, sort_classes, file_name, original_colors, original_normals,
                             sort_scores_values, point_size=20, sorted_heatmaps=None,
                             query_pos=None, backbone_features=None, show_gt=True):
-
-
         full_res_coords -= full_res_coords.mean(axis=0)
 
         v = vis.Visualizer()
@@ -325,7 +326,7 @@ class InstanceSegmentation(pl.LightningModule):
                              alpha=0.8,
                              point_size=point_size)
 
-        v.save(f"{self.config['general']['save_dir']}/visualizations/{file_name}")
+        v.save(f"{self.save_dir}/visualizations/{file_name}")
 
     def eval_step(self, batch, batch_idx, input_mode='full_dataset'):
         print("eval_step")
@@ -337,10 +338,6 @@ class InstanceSegmentation(pl.LightningModule):
         data_idx = data.idx
         original_normals = data.original_normals
         original_coordinates = data.original_coordinates
-
-        #if len(target) == 0 or len(target_full) == 0:
-        #    print("no targets")
-        #    return None
 
         if len(data.coordinates) == 0:
             assert False, 'ERROR: No points coordinates in batch!'
@@ -354,7 +351,6 @@ class InstanceSegmentation(pl.LightningModule):
             return 0.
 
         data = ME.SparseTensor(coordinates=data.coordinates, features=data.features, device=self.device)
-
 
         try:
             if input_mode=='single_scene':
@@ -403,13 +399,13 @@ class InstanceSegmentation(pl.LightningModule):
 
         if self.config.general.save_visualizations:
             backbone_features = output['backbone_features'].F.detach().cpu().numpy()
-            from sklearn import decomposition
+
             pca = decomposition.PCA(n_components=3)
             pca.fit(backbone_features)
             pca_features = pca.transform(backbone_features)
             rescaled_pca = 255 * (pca_features - pca_features.min()) / (pca_features.max() - pca_features.min())
 
-        self.eval_instance_step(output, target, target_full, inverse_maps, file_names, original_coordinates,
+        preds = self.eval_instance_step(output, target, target_full, inverse_maps, file_names, original_coordinates,
                                 original_colors, original_normals, raw_coordinates, data_idx,
                                 backbone_features=rescaled_pca if self.config.general.save_visualizations else None,
                                 input_mode=input_mode)
@@ -417,7 +413,7 @@ class InstanceSegmentation(pl.LightningModule):
         if self.config.data.test_mode != "test":
             return {f"val_{k}": v.detach().cpu().item() for k, v in losses.items()}
         else:
-            return 0.
+            return preds
 
     def test_step(self, batch, batch_idx):
         return self.eval_step(batch, batch_idx)
@@ -527,6 +523,8 @@ class InstanceSegmentation(pl.LightningModule):
         all_pred_scores = list()
         all_heatmaps = list()
         all_query_pos = list()
+
+        preds = {}
 
         offset_coords_idx = 0
         for bid in range(len(prediction[self.decoder_id]['pred_masks'])):
@@ -702,7 +700,7 @@ class InstanceSegmentation(pl.LightningModule):
                 self.bbox_gt[file_names[bid]] = bbox_data
 
             if self.config.general.eval_inner_core == -1:
-                self.preds[file_names[bid]] = {
+                preds[file_names[bid]] = {
                     'pred_masks': all_pred_masks[bid],
                     'pred_scores': all_pred_scores[bid],
                     'pred_classes': all_pred_classes[bid],
@@ -710,46 +708,40 @@ class InstanceSegmentation(pl.LightningModule):
             }
             else:
                 # prev val_dataset
-                self.preds[file_names[bid]] = {
+                preds[file_names[bid]] = {
                     'pred_masks': all_pred_masks[bid][self.test_dataset.data[idx[bid]]['cond_inner']],
                     'pred_scores': all_pred_scores[bid],
                     'pred_classes': all_pred_classes[bid],
                     'pred_heatmaps': all_heatmaps[bid],
                 }
 
-            
             # save predictions
-            pred_save_folder = self.config.general.mask_save_dir
-            if not os.path.exists(pred_save_folder):
-                os.makedirs(pred_save_folder)
+            torch.save(preds[file_names[bid]]['pred_masks'].astype(np.float16), os.path.join(self.save_dir, file_names[bid]+"_masks.pt"))
 
-            torch.save(self.preds[file_names[bid]]['pred_masks'].astype(np.float16), os.path.join(pred_save_folder, file_names[bid]+"_masks.pt"))
-
-            if str(self.config.general.save_visualizations).lower()!="false":
+            if str(self.config.general.save_visualizations).lower() != "false":
                 print('************************************************************************')
-                print("[INFO] Shape of instance masks:", self.preds[file_names[bid]]['pred_masks'].shape)
-                print('[INFO] Saving predictions to', pred_save_folder)
+                print("[INFO] Shape of instance masks:", preds[file_names[bid]]['pred_masks'].shape)
+                print('[INFO] Saving predictions to', self.save_dir)
                 self.save_visualizations([], #no targets
-                                            full_res_coords[bid],
-                                            [self.preds[file_names[bid]]['pred_masks']],
-                                            [self.preds[file_names[bid]]['pred_classes']],
-                                            file_names[bid],
-                                            original_colors[bid],
-                                            original_normals[bid],
-                                            [self.preds[file_names[bid]]['pred_scores']],
-                                            sorted_heatmaps=[all_heatmaps[bid]],
-                                            query_pos=all_query_pos[bid] if len(all_query_pos) > 0 else None,
-                                            backbone_features=backbone_features,
-                                            point_size=self.config.general.visualization_point_size, 
-                                            show_gt=False)
+                                         full_res_coords[bid],
+                                         [preds[file_names[bid]]['pred_masks']],
+                                         [preds[file_names[bid]]['pred_classes']],
+                                         file_names[bid],
+                                         original_colors[bid],
+                                         original_normals[bid],
+                                         [preds[file_names[bid]]['pred_scores']],
+                                         sorted_heatmaps=[all_heatmaps[bid]],
+                                         query_pos=all_query_pos[bid] if len(all_query_pos) > 0 else None,
+                                         backbone_features=backbone_features,
+                                         point_size=self.config.general.visualization_point_size, 
+                                         show_gt=False)
+            
+        return preds
 
 
     def eval_instance_epoch_end(self):
         log_prefix = f"val"
         ap_results = {}
-
-        head_results, tail_results, common_results = [], [], []
-
 
         box_ap_50 = eval_det(self.bbox_preds, self.bbox_gt, ovthresh=0.5, use_07_metric=False)
         box_ap_25 = eval_det(self.bbox_preds, self.bbox_gt, ovthresh=0.25, use_07_metric=False)
@@ -770,27 +762,13 @@ class InstanceSegmentation(pl.LightningModule):
         root_path = f"eval_output"
         base_path = f"{root_path}/instance_evaluation_{self.config.general.experiment_name}_{self.current_epoch}"
 
-        gt_data_path = f"{self.validation_dataset.data_dir[0]}/instance_gt/{self.validation_dataset.mode}"
-        
-        pred_path = f"{base_path}/tmp_output.txt"
-
-        log_prefix = f"val"
-
         if not os.path.exists(base_path):
             os.makedirs(base_path)
 
         if not self.config.general.export:
             shutil.rmtree(base_path)
 
-        del self.preds
-        del self.bbox_preds
-        del self.bbox_gt
-
-        gc.collect()
-
-        self.preds = dict()
-        self.bbox_preds = dict()
-        self.bbox_gt = dict()
+        self.clear_cache()
 
     def test_epoch_end(self, outputs):
         if self.config.general.export:
@@ -857,3 +835,10 @@ class InstanceSegmentation(pl.LightningModule):
             self.test_dataset,
             collate_fn=c_fn,
         )
+
+    def clear_cache(self):
+        self.bbox_preds = dict()
+        self.bbox_gt = dict()
+        gc.collect()
+        torch.cuda.empty_cache()
+

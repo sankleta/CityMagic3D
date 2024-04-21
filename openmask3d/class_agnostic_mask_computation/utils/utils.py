@@ -72,7 +72,7 @@ def load_backbone_checkpoint_with_missing_or_exsessive_keys(cfg, model):
         else:
             logger.warning(f"excessive key: {key}")
     model.load_state_dict(new_state_dict)
-    return cfg, model
+    return model
 
 def load_checkpoint_with_missing_or_exsessive_keys(cfg, model):
     state_dict = torch.load(cfg.general.checkpoint)["state_dict"]
@@ -107,7 +107,7 @@ def load_checkpoint_with_missing_or_exsessive_keys(cfg, model):
         else:
             logger.warning(f"excessive key: {key}")
     model.load_state_dict(new_state_dict)
-    return cfg, model
+    return model
 
 
 def freeze_until(net, param_name: str = None):

@@ -8,12 +8,15 @@ set -e
 # --------
 # NOTE: SET THESE PARAMETERS BASED ON YOUR SCENE!
 # data paths
-SCENE_DIR="$(pwd)/resources/scene_example"
-SCENE_PLY_PATH="${SCENE_DIR}/scene_example.ply"
+#SCENE_DIR="$(pwd)/resources/scene_example"
+SCENE_DIR="$(pwd)/resources/STPLS3D_real_world_RA_test"
+#SCENE_PLY_PATH="${SCENE_DIR}/scene_example.ply"
+SCENE_PLY_PATH="${SCENE_DIR}/RA_points.ply"
+
 # model ckpt paths
-MASK_MODULE_CKPT_PATH="$(pwd)/resources/scannet200_model.ckpt"
+MASK_MODULE_CKPT_PATH="$(pwd)/resources/Mask3D__stpls3d_benchmark_03.ckpt"
 # output directories to save masks and mask features
-EXPERIMENT_NAME="test_1"
+EXPERIMENT_NAME="test_examle_scene_with_Mask3D__stpls3d_benchmark_03.ckpt"
 OUTPUT_DIRECTORY="$(pwd)/output"
 TIMESTAMP=$(date +"%Y-%m-%d-%H-%M-%S")
 OUTPUT_FOLDER_DIRECTORY="${OUTPUT_DIRECTORY}/${TIMESTAMP}-${EXPERIMENT_NAME}"
@@ -33,18 +36,13 @@ general.experiment_name=${EXPERIMENT_NAME} \
 general.checkpoint=${MASK_MODULE_CKPT_PATH} \
 general.train_mode=false \
 data.test_mode=test \
-model.num_queries=120 \
+model.num_queries=20 \
 general.use_dbscan=true \
 general.dbscan_eps=0.95 \
+general.dbscan_min_points=10 \
 general.save_visualizations=${SAVE_VISUALIZATIONS} \
 general.scene_path=${SCENE_PLY_PATH} \
 general.mask_save_dir="${OUTPUT_FOLDER_DIRECTORY}" \
 hydra.run.dir="${OUTPUT_FOLDER_DIRECTORY}/hydra_outputs/class_agnostic_mask_computation" 
 echo "[INFO] Mask computation done!"
-
-# get the path of the saved masks
-MASK_FILE_BASE=$(echo $SCENE_PLY_PATH | sed 's:.*/::')
-MASK_FILE_NAME=${MASK_FILE_BASE/.ply/_masks.pt}
-SCENE_MASK_PATH="${OUTPUT_FOLDER_DIRECTORY}/${MASK_FILE_NAME}"
-echo "[INFO] Masks saved to ${SCENE_MASK_PATH}."
 

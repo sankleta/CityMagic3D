@@ -327,12 +327,14 @@ def voxelize(batch, ignore_label, voxel_size, probing, mode, task,
     if "train" not in mode:
         return (
             NoGpu(coordinates, features, original_labels, inverse_maps, full_res_coords,
-                  target_full, original_colors, original_normals, original_coordinates, idx), target,
+                  target_full, original_colors, original_normals, original_coordinates, idx), 
+            target,
             [sample[3] for sample in batch]
         )
     else:
         return (
-            NoGpu(coordinates, features, original_labels, inverse_maps, full_res_coords), target,
+            NoGpu(coordinates, features, original_labels, inverse_maps, full_res_coords), 
+            target,
             [sample[3] for sample in batch]
         )
 

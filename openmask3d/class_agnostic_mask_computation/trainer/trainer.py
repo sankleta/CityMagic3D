@@ -4,15 +4,11 @@ from pathlib import Path
 import statistics
 import shutil
 import os
-import math
 import pyviz3d.visualizer as vis
 from torch_scatter import scatter_mean
-#import matplotlib
-from benchmark.evaluate_semantic_instance import evaluate
 from collections import defaultdict
 from sklearn.cluster import DBSCAN
 from utils.votenet_utils.eval_det import eval_det
-from datasets.scannet200.scannet200_splits import HEAD_CATS_SCANNET_200, TAIL_CATS_SCANNET_200, COMMON_CATS_SCANNET_200, VALID_CLASS_IDS_200_VALIDATION
 from datasets.scannet200.scannet200_constants import VALID_CLASS_IDS_200, CLASS_LABELS_200
 import hydra
 import MinkowskiEngine as ME
@@ -24,8 +20,9 @@ import random
 import colorsys
 from typing import List, Tuple
 import functools
-import pdb
 import copy
+import time
+
 
 @functools.lru_cache(20)
 def get_evenly_distributed_colors(count: int) -> List[Tuple[np.uint8, np.uint8, np.uint8]]:
@@ -34,11 +31,13 @@ def get_evenly_distributed_colors(count: int) -> List[Tuple[np.uint8, np.uint8, 
     random.shuffle(HSV_tuples)
     return list(map(lambda x: (np.array(colorsys.hsv_to_rgb(*x))*255).astype(np.uint8), HSV_tuples))
 
+
 class RegularCheckpointing(pl.Callback):
     def on_train_epoch_end(self, trainer: "pl.Trainer", pl_module: "pl.LightningModule"):
         general = pl_module.config.general
         trainer.save_checkpoint(f"{general.save_dir}/last-epoch.ckpt")
         print("Checkpoint created")
+
 
 class InstanceSegmentation(pl.LightningModule):
     def __init__(self, config):
@@ -329,6 +328,7 @@ class InstanceSegmentation(pl.LightningModule):
         v.save(f"{self.config['general']['save_dir']}/visualizations/{file_name}")
 
     def eval_step(self, batch, batch_idx, input_mode='full_dataset'):
+        print("eval_step")
 
         data, target, file_names = batch
         inverse_maps = data.inverse_maps
@@ -507,12 +507,10 @@ class InstanceSegmentation(pl.LightningModule):
     def eval_instance_step(self, output, target_low_res, target_full_res, inverse_maps, file_names,
                            full_res_coords, original_colors, original_normals, raw_coords, idx, first_full_res=False,
                            backbone_features=None, label_offset=2, input_mode='full_dataset'):
+        print("eval_instance_step")
 
         if hasattr(self, 'validation_dataset'):
             label_offset = self.validation_dataset.label_offset
-
-        if input_mode == "single_scene":
-            target_full = [[]] #data.target_full
 
         prediction = output['aux_outputs']
         prediction.append({
@@ -537,7 +535,8 @@ class InstanceSegmentation(pl.LightningModule):
                     masks = prediction[self.decoder_id]['pred_masks'][bid].detach().cpu()[target_low_res[bid]['point2segment'].cpu()]
                 else:
                     masks = prediction[self.decoder_id]['pred_masks'][bid].detach().cpu()
-                    
+                
+                print(f"DBSCAN: {self.config.general.use_dbscan}")
                 if self.config.general.use_dbscan:
                     new_preds = {
                         'pred_masks': list(),
@@ -548,13 +547,17 @@ class InstanceSegmentation(pl.LightningModule):
                     curr_coords = raw_coords[offset_coords_idx:curr_coords_idx + offset_coords_idx]
                     offset_coords_idx += curr_coords_idx
 
+                    print(f"masks shape: {masks.shape}")
+                    print(f"DBSCAN args: eps={self.config.general.dbscan_eps}, min_samples={self.config.general.dbscan_min_points}")
                     for curr_query in range(masks.shape[1]):
                         curr_masks = masks[:, curr_query] > 0
 
                         if curr_coords[curr_masks].shape[0] > 0:
+                            start = time.time()
                             clusters = DBSCAN(eps=self.config.general.dbscan_eps,
                                               min_samples=self.config.general.dbscan_min_points,
                                               n_jobs=-1).fit(curr_coords[curr_masks]).labels_
+                            print(f"DBSCAN time: {time.time()-start}")
 
                             new_mask = torch.zeros(curr_masks.shape, dtype=int)
                             new_mask[curr_masks] = torch.from_numpy(clusters) + 1
@@ -565,6 +568,7 @@ class InstanceSegmentation(pl.LightningModule):
                                     new_preds['pred_masks'].append(original_pred_masks * (new_mask == cluster_id + 1))
                                     new_preds['pred_logits'].append(
                                         prediction[self.decoder_id]['pred_logits'][bid, curr_query])
+                    
                     scores, masks, classes, heatmap = self.get_class_agn_mask(
                         torch.stack(new_preds['pred_logits']).cpu(),
                         torch.stack(new_preds['pred_masks']).T,
@@ -572,10 +576,10 @@ class InstanceSegmentation(pl.LightningModule):
                         self.model.num_classes - 1)
                 else:
                     scores, masks, classes, heatmap = self.get_class_agn_mask(
-                    prediction[self.decoder_id]['pred_logits'][bid].detach().cpu(),
-                    masks,
-                    prediction[self.decoder_id]['pred_logits'][bid].shape[0],
-                    self.model.num_classes - 1)
+                        prediction[self.decoder_id]['pred_logits'][bid].detach().cpu(),
+                        masks,
+                        prediction[self.decoder_id]['pred_logits'][bid].shape[0],
+                        self.model.num_classes - 1)
 
                 if self.eval_on_segments:
                     p2seg = target_full_res[bid]['point2segment']
@@ -703,8 +707,7 @@ class InstanceSegmentation(pl.LightningModule):
                     'pred_scores': all_pred_scores[bid],
                     'pred_classes': all_pred_classes[bid],
                     'pred_heatmaps': all_heatmaps[bid],
-
-                }
+            }
             else:
                 # prev val_dataset
                 self.preds[file_names[bid]] = {
@@ -739,8 +742,6 @@ class InstanceSegmentation(pl.LightningModule):
                                             backbone_features=backbone_features,
                                             point_size=self.config.general.visualization_point_size, 
                                             show_gt=False)
-            
-
 
 
     def eval_instance_epoch_end(self):

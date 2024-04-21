@@ -1,37 +1,32 @@
-import logging
+from dataclasses import dataclass, astuple
 import os
 import hydra
 from dotenv import load_dotenv
 from omegaconf import DictConfig
-from trainer.trainer import InstanceSegmentation, RegularCheckpointing
+from trainer.trainer import InstanceSegmentation
 from utils.utils import (
     load_checkpoint_with_missing_or_exsessive_keys,
     load_backbone_checkpoint_with_missing_or_exsessive_keys
 )
-from pytorch_lightning import Trainer
+from utils.point_cloud_utils import splitPointCloud
 import open3d as o3d
 import numpy as np
 import torch
 import time
-import pdb
+import psutil
 
-def get_parameters(cfg: DictConfig):
-    #logger = logging.getLogger(__name__)
-    load_dotenv(".env")
 
-    # getting basic configuration
-    if cfg.general.get("gpus", None) is None:
-        cfg.general.gpus = os.environ.get("CUDA_VISIBLE_DEVICES", None)
-    #loggers = []
-
+def load_model(cfg: DictConfig):
     model = InstanceSegmentation(cfg)
     if cfg.general.backbone_checkpoint is not None:
-        cfg, model = load_backbone_checkpoint_with_missing_or_exsessive_keys(cfg, model)
+        model = load_backbone_checkpoint_with_missing_or_exsessive_keys(cfg, model)
     if cfg.general.checkpoint is not None:
-        cfg, model = load_checkpoint_with_missing_or_exsessive_keys(cfg, model)
-
-    #logger.info(flatten_dict(OmegaConf.to_container(cfg, resolve=True)))
-    return cfg, model, None #loggers
+        model = load_checkpoint_with_missing_or_exsessive_keys(cfg, model)
+    
+    device = torch.device('cuda') if torch.cuda.is_available() else torch.device('cpu')
+    print(f"Device: {device}")
+    model.to(device)
+    return model
 
 
 def load_ply(filepath):
@@ -42,7 +37,19 @@ def load_ply(filepath):
     normals = np.asarray(pcd.normals)
     return coords, colors, normals
 
-def process_file(filepath):
+
+@dataclass
+class SceneData:
+    coordinates: np.ndarray
+    features: np.ndarray
+    labels: np.ndarray
+    scene_name: str
+    raw_colors: np.ndarray
+    raw_normals: np.ndarray
+    raw_coordinates: np.ndarray
+
+
+def process_file(filepath) -> SceneData:
     coords, colors, normals = load_ply(filepath)
     raw_coordinates = coords.copy()
     raw_colors = (colors*255).astype(np.uint8)
@@ -55,33 +62,63 @@ def process_file(filepath):
         features = np.hstack((features, coords))
 
     filename = filepath.split("/")[-1][:-4]
-    return [[coords, features, [], filename, raw_colors, raw_normals, raw_coordinates, 0]] # 2: original_labels, 3: none
-    # coordinates, features, labels, self.data[idx]['raw_filepath'].split("/")[-2], raw_color, raw_normals, raw_coordinates, idx
+    return SceneData(coords, features, [], filename, raw_colors, raw_normals, raw_coordinates)
+
 
 @hydra.main(config_path="conf", config_name="config_base_class_agn_masks_single_scene.yaml")
 def get_class_agnostic_masks(cfg: DictConfig):
-
-    device = torch.device('cuda') if torch.cuda.is_available() else torch.device('cpu')
     os.chdir(hydra.utils.get_original_cwd())
-    cfg, model, loggers = get_parameters(cfg)
+    load_dotenv(".env")  # is this needed?
+
+    if cfg.general.get("gpus", None) is None:
+        cfg.general.gpus = os.environ.get("CUDA_VISIBLE_DEVICES", None)
+
+    model = load_model(cfg)
+    model.eval()
 
     c_fn = hydra.utils.instantiate(cfg.data.test_collation) #(model.config.data.test_collation)
 
-    input_batch = process_file(cfg.general.scene_path)
-    batch = c_fn(input_batch)
-
-    model.to(device)
-    model.eval()
-
     start = time.time()
-    with torch.no_grad():
-        res_dict = model.get_masks_single_scene(batch)
+    scene_data = process_file(cfg.general.scene_path)
+    if cfg.data.do_slicing:
+        print("Slicing the point cloud...")
+        size = cfg.data.slicing_size
+        stride = cfg.data.slicing_stride
+        for slice, cond, x, y in splitPointCloud(scene_data.coordinates, size, stride):
+            print(psutil.virtual_memory())
+            if cond.sum() == 0:
+                continue
+            labels = np.zeros((0,)) if len(scene_data.labels) == 0 else scene_data.labels[cond]
+            slice_data = SceneData(slice,
+                                   scene_data.features[cond],
+                                   labels, 
+                                   scene_data.scene_name + f"_slice_{x}_{y}", 
+                                   scene_data.raw_colors[cond], 
+                                   scene_data.raw_normals[cond], 
+                                   scene_data.raw_coordinates[cond])
+            print(f"Processing slice:{slice_data.scene_name} with shape: {slice_data.coordinates.shape}")
+            input_batch = [astuple(slice_data) + (0, )]
+            batch = c_fn(input_batch)
+            with torch.no_grad():
+                res_dict = model.get_masks_single_scene(batch)
+                print(f"found {model.preds[slice_data.scene_name]['pred_masks'].shape[0]} instances")
+                print(model.preds.keys())
+                del(res_dict)
+    else:
+        input_batch = [astuple(scene_data) + (0, )]
+        batch = c_fn(input_batch)
+        with torch.no_grad():
+            res_dict = model.get_masks_single_scene(batch)
+
     end = time.time()
+
     print("Time elapsed: ", end - start)
+
 
 @hydra.main(config_path="conf", config_name="config_base_class_agn_masks_single_scene.yaml")
 def main(cfg: DictConfig):
     get_class_agnostic_masks(cfg)
+
 
 if __name__ == "__main__":
     main()

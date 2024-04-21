@@ -15,7 +15,7 @@ general:
   export: false
   use_dbscan: true
   ignore_class_threshold: 100
-  project_name: scannet200
+  project_name: citymagic3d
   workspace: username
   experiment_name: DEBUG_ABLATION
   num_targets: 201
@@ -55,7 +55,7 @@ general:
   gpus: 1
 
 defaults:
-  - data: indoor
+  - data: city
   - data/data_loaders: simple_loader
   - data/datasets: scannet200
   - data/collation_functions: voxelize_collate

@@ -101,9 +101,8 @@ def get_class_agnostic_masks(cfg: DictConfig):
             batch = c_fn(input_batch)
             with torch.no_grad():
                 res_dict = model.get_masks_single_scene(batch)
-                print(f"found {model.preds[slice_data.scene_name]['pred_masks'].shape[0]} instances")
-                print(model.preds.keys())
                 del(res_dict)
+
     else:
         input_batch = [astuple(scene_data) + (0, )]
         batch = c_fn(input_batch)

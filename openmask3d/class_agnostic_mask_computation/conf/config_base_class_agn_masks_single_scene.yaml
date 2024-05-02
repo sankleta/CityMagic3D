@@ -14,14 +14,14 @@ general:
   decoder_id: -1
   export: false
   use_dbscan: true
+  dbscan_eps: 0.95
+  dbscan_min_points: 1
   ignore_class_threshold: 100
   project_name: citymagic3d
   workspace: username
   experiment_name: DEBUG_ABLATION
   num_targets: 201
   add_instance: true
-  dbscan_eps: 0.95
-  dbscan_min_points: 1
   input_mode: 'single_scene'
   scene_path: null
   mask_save_dir: null

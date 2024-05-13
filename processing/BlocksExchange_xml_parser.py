@@ -15,6 +15,12 @@ def get_intrinsic_matrix(photogroup):
     return intrinsic_matrix
 
 
+def get_image_dimensions(photogroup):
+    width = float(photogroup.find('ImageDimensions/Width').text)
+    height = float(photogroup.find('ImageDimensions/Height').text)
+    return width, height
+
+
 # Function to extract pose matrix from a Photo element
 def get_pose_matrix(photo):
     rotation_elements = photo.find('Pose/Rotation')
@@ -42,12 +48,15 @@ def parse_xml(filename):
 
     intrinsic_matrix = None
     poses_for_images = dict()
+    width, height = None, None
     # Loop through each photogroup and photo to extract matrices and image path
     for photogroup in root.findall('.//Photogroup'):
         print("Photogroup Name:", photogroup.find('Name').text)
         intrinsic_matrix = get_intrinsic_matrix(photogroup)
         print("Intrinsic Matrix:")
         print(intrinsic_matrix)
+        width, height = get_image_dimensions(photogroup)
+        print("Image Dimensions:", width, height)
 
         for photo in photogroup.findall('Photo'):
             print("Photo ID:", photo.find('Id').text)
@@ -58,4 +67,4 @@ def parse_xml(filename):
             print(pose_matrix)
             poses_for_images[image_name] = pose_matrix
 
-    return intrinsic_matrix, poses_for_images
+    return intrinsic_matrix, poses_for_images, width, height

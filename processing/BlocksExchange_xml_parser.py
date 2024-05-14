@@ -25,7 +25,7 @@ def get_image_dimensions(photogroup):
     return width, height
 
 
-# Function to extract pose matrix from a Photo element
+# Function to extract rotation matrix and center vector from a Photo element
 def get_rotation_matrix_and_center(photo):
     rotation_elements = photo.find('Pose/Rotation')
     center_elements = photo.find('Pose/Center')

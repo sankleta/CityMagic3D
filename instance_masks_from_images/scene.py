@@ -46,7 +46,6 @@ class Scene:
             t_mesh = o3d.t.geometry.TriangleMesh.from_legacy(submesh)
             mesh_id = self.raycasting_scene.add_triangles(t_mesh)
 
-
     def is_visible(self, img_position, points):
         if self.raycasting_scene is None:
             self.init_raycasting_scene()
@@ -56,7 +55,7 @@ class Scene:
         ans = self.raycasting_scene.cast_rays(o3d.core.Tensor([rays], dtype=o3d.core.Dtype.Float32))
         return ans["t_hit"][0] >= self.visibility_threshold
 
-    def get_visible_points(self, camera, img_pose):
+    def get_visible_points(self, camera, img_extrinsic):
         n_points = len(self.point_cloud.points)
         X = self.get_point_cloud_homogeneous_coordinates()
         intrinsic = np.concatenate((camera.intrinsic_matrix, [[0],[0],[0]]), axis=1)
@@ -65,7 +64,7 @@ class Scene:
         
         # STEP 1: get the projected points
         # Get the coordinates of the projected points in the i-th view (i.e. the view with index idx)
-        projected_points_not_norm = (intrinsic @ np.linalg.inv(img_pose) @ X.T).T
+        projected_points_not_norm = (intrinsic @ img_extrinsic @ X.T).T
         
         # Get the mask of the points which have a non-null third coordinate to avoid division by zero
         mask = (projected_points_not_norm[:, 2] != 0) # don't do the division for point with the third coord equal to zero
@@ -79,7 +78,7 @@ class Scene:
     
         # STEP 2: occlusions computation
         inside_points = np.array(self.point_cloud.points)[inside_mask]
-        img_position = img_pose[:3,3:].reshape((3,))
+        img_position = np.linalg.inv(img_extrinsic)[:3,3:].reshape((3,))
         visibility_mask_inside = self.is_visible(img_position, inside_points)
         visibility_mask = inside_mask.copy()
         visibility_mask[inside_mask] = visibility_mask_inside

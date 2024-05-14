@@ -1,0 +1,24 @@
+name: cm3d_2d
+channels:
+  - pytorch
+  - nvidia
+  - conda-forge
+  # - open3d-admin
+dependencies:
+  - python==3.10
+  - pip==21.0
+
+  - hydra-core=1.3.*
+  - matplotlib=3.7.*
+  - numpy=1.24.*
+  # - open3d-admin::open3d=0.15.1
+  - opencv=4.5.3
+  - pytorch::pytorch=2.3.0
+  - pytorch::torchvision=0.18.0
+  - pytorch-cuda=11.8
+  - jupyterlab
+  - ipython
+
+  - pip:
+    - git+https://github.com/facebookresearch/segment-anything.git
+    - open3d==0.18.0

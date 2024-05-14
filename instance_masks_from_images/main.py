@@ -2,25 +2,21 @@ import gc
 import logging
 import os
 import random
+import time
 
 import hydra
+import json
 import numpy as np
 from omegaconf import DictConfig
 from PIL import Image
 import torch
 
-from processing import BlocksExchange_xml_parser
+from .utils import get_extrinsic_matrix, load_image_info, output_dir
 from .sam import load_sam_mask_generator, show_masks
-from .scene import Scene, Camera
+from .scene import Scene
 
 
 logger = logging.getLogger(__name__)
-
-
-def load_image_info(cfg):
-    intrinsic_matrix, poses_for_images, width, height = BlocksExchange_xml_parser.parse_xml(cfg.scene.cam_info_path)
-    camera = Camera(intrinsic_matrix, width, height)
-    return camera, poses_for_images
 
 
 def generate_sam_masks(cfg, img_name, sam_mask_generator):
@@ -33,8 +29,8 @@ def generate_sam_masks(cfg, img_name, sam_mask_generator):
     with torch.no_grad():
         image_masks = sam_mask_generator.generate(img_arr)
     logger.info(f"Generated {len(image_masks)} masks for image {img_path}")
-    show_masks(image_masks, img_arr, os.path.join(cfg.output_dir, f"{img_name}__mask_visu.png"))
-    save_masks_as_npz(image_masks, os.path.join(cfg.output_dir, f"{img_name}__masks.npz"))
+    show_masks(image_masks, img_arr, os.path.join(output_dir(), f"{img_name}__mask_visu.png"))
+    save_masks_as_npz(image_masks, os.path.join(output_dir(), f"{img_name}__masks.npz"))
     return image_masks
 
 
@@ -59,13 +55,16 @@ def get_indices_on_point_cloud(resized_resolution, projected_points, visibility_
     return np.where(all_points_mask)[0]
 
 
-@hydra.main(config_path=".", config_name="config.yaml")
+@hydra.main(version_base="1.3", config_path=".", config_name="config.yaml")
 def main(cfg: DictConfig):
     # Load the SAM model
     sam_mask_generator = load_sam_mask_generator(cfg)
     images_dir = cfg.scene.images_dir
-    files = random.sample(os.listdir(images_dir), cfg.samples)
-    os.makedirs(cfg.output_dir)
+    if cfg.samples > 0:
+        files = random.sample(os.listdir(images_dir), cfg.samples)
+    else:
+        files = os.listdir(images_dir)
+    
     mask_metadata = {}
 
     # load scene with point cloud, camera info
@@ -80,21 +79,24 @@ def main(cfg: DictConfig):
 
         mask_indices = {}
         
-        img_pose = poses_for_images[img_name]
-        inside_mask, visibility_mask, projected_points = scene.get_visible_points(camera, img_pose)
+        img_extrinsic = get_extrinsic_matrix(*poses_for_images[img_name])
+        inside_mask, visibility_mask, projected_points = scene.get_visible_points(camera, img_extrinsic)
 
+        logger.info("Projecting masks to point cloud...")
         for i, img_mask in enumerate(image_masks):
-            # project masks to point cloud
             mask_indices[str(i)] = get_indices_on_point_cloud(resized_resolution, projected_points, visibility_mask, img_mask, camera)
 
         # save all mask indices
-        np.savez(os.path.join(cfg.output_dir, f"{img_name}__mask_indices.npz"), **mask_indices)            
+        np.savez(os.path.join(output_dir(), f"{img_name}__mask_indices.npz"), **mask_indices)            
 
         for img_mask in image_masks:
             del(img_mask["segmentation"])
         mask_metadata[img_name] = image_masks
         gc.collect()
         torch.cuda.empty_cache()
+    
+    # save mask metadata
+    json.dump(mask_metadata, open(os.path.join(output_dir(), "mask_metadata.json"), "w"))
 
     # TODO save clip embedding of masks
 
@@ -102,5 +104,8 @@ def main(cfg: DictConfig):
 
 
 if __name__ == "__main__":
+    logger.info("Starting instance masks generation...")
+    start = time.time()
     main()
+    logger.info(f"Instance masks generation finished in {(time.time() - start) / 60} minutes.")
 

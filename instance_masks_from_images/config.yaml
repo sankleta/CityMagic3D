@@ -1,5 +1,10 @@
-output_dir: Instance_Masks_test__Real_World__WMSC
-samples: 3
+hydra:
+  job:
+    name: instance_masks_from_images
+    chdir: false
+  run:
+    dir: ./outputs/${hydra.job.name}/${now:%Y-%m-%d_%H-%M-%S}
+samples: 20
 resized_img_width: 400
 resized_img_height: 300
 sam_model_type: vit_h

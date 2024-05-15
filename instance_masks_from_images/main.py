@@ -11,6 +11,7 @@ from omegaconf import DictConfig
 from PIL import Image
 import torch
 
+from clip import load_clip, extract_clip_features
 from utils import get_extrinsic_matrix, load_image_info, output_dir
 from sam import load_sam_mask_generator, show_masks
 from scene import Scene
@@ -19,16 +20,11 @@ from scene import Scene
 logger = logging.getLogger(__name__)
 
 
-def generate_sam_masks(cfg, img_name, sam_mask_generator):
-    img_path = os.path.join(cfg.scene.images_dir, img_name)
-    img = Image.open(img_path).convert("RGB")
-    logger.info(f"image size: {img.size}")
-    img = img.resize((cfg.resized_img_width, cfg.resized_img_height), Image.Resampling.LANCZOS)
-    logger.info(f"resized image size: {img.size}")
+def generate_sam_masks(cfg, img_name, img, sam_mask_generator):
     img_arr = np.array(img)
     with torch.no_grad():
         image_masks = sam_mask_generator.generate(img_arr)
-    logger.info(f"Generated {len(image_masks)} masks for image {img_path}")
+    logger.info(f"Generated {len(image_masks)} masks for image {img_name}")
     show_masks(image_masks, img_arr, os.path.join(output_dir(), f"{img_name}__mask_visu.png"))
     save_masks_as_npz(image_masks, os.path.join(output_dir(), f"{img_name}__masks.npz"))
     return image_masks
@@ -59,6 +55,7 @@ def get_indices_on_point_cloud(resized_resolution, projected_points, visibility_
 def main(cfg: DictConfig):
     # Load the SAM model
     sam_mask_generator = load_sam_mask_generator(cfg)
+    clip = load_clip(cfg.clip_model)
     images_dir = cfg.scene.images_dir
     if cfg.samples > 0:
         files = random.sample(os.listdir(images_dir), cfg.samples)
@@ -75,7 +72,12 @@ def main(cfg: DictConfig):
     
     # generate masks from images and save masks as npz
     for img_name in files:
-        image_masks = generate_sam_masks(cfg, img_name, sam_mask_generator)
+        img_path = os.path.join(cfg.scene.images_dir, img_name)
+        img = Image.open(img_path).convert("RGB")
+        logger.info(f"image size: {img.size}")
+        img = img.resize((cfg.resized_img_width, cfg.resized_img_height), Image.Resampling.LANCZOS)
+        logger.info(f"resized image size: {img.size}")
+        image_masks = generate_sam_masks(cfg, img_name, img, sam_mask_generator)
 
         mask_indices = {}
         
@@ -84,7 +86,8 @@ def main(cfg: DictConfig):
 
         logger.info("Projecting masks to point cloud...")
         for i, img_mask in enumerate(image_masks):
-            mask_indices[str(i)] = get_indices_on_point_cloud(resized_resolution, projected_points, visibility_mask, img_mask, camera)
+            clip_embedding = extract_clip_features(clip, img, img_mask)
+            mask_indices[str(i)] = [get_indices_on_point_cloud(resized_resolution, projected_points, visibility_mask, img_mask, camera), clip_embedding]
 
         # save all mask indices
         np.savez(os.path.join(output_dir(), f"{img_name}__mask_indices.npz"), **mask_indices)            

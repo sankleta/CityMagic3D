@@ -1,5 +1,6 @@
 import hydra
 import numpy as np
+from PIL import Image
 
 from processing import BlocksExchange_xml_parser
 from scene import Camera
@@ -23,3 +24,12 @@ def load_image_info(cfg):
     intrinsic_matrix, poses_for_images, width, height = BlocksExchange_xml_parser.parse_xml(cfg.scene.cam_info_path)
     camera = Camera(intrinsic_matrix, width, height)
     return camera, poses_for_images
+
+
+def crop_image(image, mask):
+    mask_img = Image.fromarray((mask["segmentation"] * 255).astype(np.uint8))
+#    mask_img.show(title="Mask")
+    masked_image = Image.composite(image, Image.new("RGB", image.size), mask_img)
+#    image.show(title="Original Image")
+#    masked_image.show(title="Masked Image")
+    return masked_image

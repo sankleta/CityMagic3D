@@ -1,6 +1,26 @@
 # CityMagic3D
 
 
+## Generate masks from images
+
+Prerequisites: a point cloud and a mesh of the same scene, and a set of images.
+
+To run in the root directory, by:
+```
+python -m instance_masks_from_images.main
+```
+
+By default, it uses the `./instance_masks_from_images/config.yaml` as config file, which can be overriden by 
+```
+python -m instance_masks_from_images.main --config-name=config_v2.yaml
+```
+
+
+
+
+
+---
+---
 ---
 ## Setup for OpenMask3d 🛠
 Clone the repository, create conda environment and install the required packages as follows:

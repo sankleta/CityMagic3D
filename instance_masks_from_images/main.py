@@ -11,9 +11,9 @@ from omegaconf import DictConfig
 from PIL import Image
 import torch
 
-from .utils import get_extrinsic_matrix, load_image_info, output_dir
-from .sam import load_sam_mask_generator, show_masks
-from .scene import Scene
+from utils import get_extrinsic_matrix, load_image_info, output_dir
+from sam import load_sam_mask_generator, show_masks
+from scene import Scene
 
 
 logger = logging.getLogger(__name__)

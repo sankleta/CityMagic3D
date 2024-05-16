@@ -26,10 +26,12 @@ def load_image_info(cfg):
     return camera, poses_for_images
 
 
-def crop_image(image, mask):
+def mask_and_crop_image(image, mask):
     mask_img = Image.fromarray((mask["segmentation"] * 255).astype(np.uint8))
-#    mask_img.show(title="Mask")
+   # mask_img.show(title="Mask")
     masked_image = Image.composite(image, Image.new("RGB", image.size), mask_img)
-#    image.show(title="Original Image")
-#    masked_image.show(title="Masked Image")
+    x, y, width, height = mask['bbox']
+    masked_image = masked_image.crop((x, y, x + width, y + height))
+   # image.show(title="Original Image")
+   # masked_image.show(title="Masked Image")
     return masked_image

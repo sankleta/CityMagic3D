@@ -13,3 +13,5 @@ pillow~=10.3.0
 transformers~=4.40.2
 sentencepiece
 protobuf
+segment-anything
+pyvista

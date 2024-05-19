@@ -9,7 +9,7 @@ resized_img_width: 400
 resized_img_height: 300
 sam_model_type: vit_h
 sam_checkpoint: /media/papjuli/Data/data/3DV_project/openmask3d_resources/sam_vit_h_4b8939.pth
-clip_model: google/siglip-base-patch16-224
+image_text_model: google/siglip-base-patch16-224
 sam_mask_gen_params:
   # points_per_side: 32
   pred_iou_thresh: 0.82

@@ -11,7 +11,7 @@ from omegaconf import DictConfig
 from PIL import Image
 import torch
 
-from clip import load_clip, extract_clip_features
+from image_text import load_image_text_model, extract_text_features
 from utils import get_extrinsic_matrix, load_image_info, output_dir
 from sam import load_sam_mask_generator, show_masks
 from scene import Scene
@@ -51,11 +51,11 @@ def get_indices_on_point_cloud(resized_resolution, projected_points, visibility_
     return np.where(all_points_mask)[0]
 
 
-@hydra.main(version_base="1.3", config_path=".", config_name="config2.yaml")
+@hydra.main(version_base="1.3", config_path=".", config_name="config.yaml")
 def main(cfg: DictConfig):
     # Load the SAM model
     sam_mask_generator = load_sam_mask_generator(cfg)
-    clip = load_clip(cfg.clip_model)
+    image_text_model = load_image_text_model(cfg.image_text_model)
     images_dir = cfg.scene.images_dir
     if cfg.samples > 0:
         files = random.sample(os.listdir(images_dir), cfg.samples)
@@ -80,24 +80,25 @@ def main(cfg: DictConfig):
         image_masks = generate_sam_masks(cfg, img_name, img, sam_mask_generator)
 
         mask_indices = {}
-        mask_i_clip_embeddings = {}
+        mask_text_embeddings = {}
 
         img_extrinsic = get_extrinsic_matrix(*poses_for_images[img_name])
         inside_mask, visibility_mask, projected_points = scene.get_visible_points(camera, img_extrinsic)
 
-        logger.info("Adding clip embedding and projecting masks to point cloud...")
+        logger.info("Adding image-text embedding and projecting masks to point cloud...")
         for i, img_mask in enumerate(image_masks):
             logger.info(f"Mask {i}")
-            # Have to remove very small masks (dots and lines), clip doesn't respond well
+            # Have to remove very small masks (dots and lines), image_text_model doesn't respond well
             if img_mask['bbox'][2] < 2 or img_mask['bbox'][3] < 2:
+                logger.info(f"Skipped too small mask {i}")
                 continue
-            clip_embedding = extract_clip_features(clip, img, img_mask)
+            text_embedding = extract_text_features(image_text_model, img, img_mask)
             mask_indices[str(i)] = get_indices_on_point_cloud(resized_resolution, projected_points, visibility_mask, img_mask, camera)
-            mask_i_clip_embeddings[str(i)] = clip_embedding
+            mask_text_embeddings[str(i)] = text_embedding
 
         # save all mask indices
         np.savez(os.path.join(output_dir(), f"{img_name}__mask_indices.npz"), **mask_indices)
-        np.savez(os.path.join(output_dir(), f"{img_name}__mask_clip_embeddings.npz"), **mask_i_clip_embeddings)
+        np.savez(os.path.join(output_dir(), f"{img_name}__mask_text_embeddings.npz"), **mask_text_embeddings)
 
         for img_mask in image_masks:
             del (img_mask["segmentation"])

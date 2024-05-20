@@ -35,6 +35,6 @@ def get_query_embedding(image_text_model, text_query):
 def compute_cosine_similarity_scores(mask_embeddings, query_embedding):
     cossim = torch.nn.CosineSimilarity(dim=0, eps=1e-3)
     scores = {}
-    for mask_idx in enumerate(mask_embeddings):
+    for mask_idx in mask_embeddings:
         scores[mask_idx] = cossim(torch.from_numpy(mask_embeddings[mask_idx]), query_embedding)
     return scores

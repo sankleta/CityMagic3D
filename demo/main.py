@@ -14,7 +14,8 @@ QUERY = "green"
 
 mask_embeddings = {key: LOADED_MASKS[key] for key in LOADED_MASKS}
 
-mask_text_embeddings = {key: LOADED_TEXT_EMBEDDINGS[key].reshape(TEXT_EMBEDDING_SIZE, ) for key in LOADED_TEXT_EMBEDDINGS}
+mask_text_embeddings = {key: LOADED_TEXT_EMBEDDINGS[key].reshape(TEXT_EMBEDDING_SIZE, ) for key in
+                        LOADED_TEXT_EMBEDDINGS}
 
 model = image_text.load_image_text_model("google/siglip-base-patch16-224")
 query_embeddings = image_text.get_query_embedding(model, QUERY)
@@ -22,15 +23,19 @@ query_embeddings = image_text.get_query_embedding(model, QUERY)
 scores = image_text.compute_cosine_similarity_scores(mask_text_embeddings, query_embeddings)
 
 # Create a plotter object
-plotter = pv.Plotter()
+plotter = pv.Plotter(shape=(1, 2))
+plotter.subplot(0, 0)
 plotter.add_text(f"Query: '{QUERY}'", font_size=14)
 
 # Add the mesh to the plotter
 plotter.add_mesh(MESH, scalars='RGBA', rgb=True)
-
-# Add masks as points on top
-# show_top_20_instances(plotter, mesh, scores, mask_embeddings)
 show_heatmap(plotter, MESH, scores, mask_embeddings)
+
+plotter.subplot(0, 1)
+plotter.add_mesh(MESH, scalars='RGBA', rgb=True)
+# Add masks as points on top
+show_top_20_instances(plotter, MESH, scores, mask_embeddings)
+plotter.show()
 
 # Display the plot
 plotter.show()

@@ -50,7 +50,7 @@ def get_indices_on_point_cloud(resized_resolution, projected_points, visibility_
 
     all_points_mask = np.zeros(len(projected_points), dtype=bool)
     all_points_mask[visibility_mask] = visible_points_mask
-    return np.where(all_points_mask)[0]
+    return np.where(all_points_mask)[0].astype(np.uint32)
 
 
 @hydra.main(version_base="1.3", config_path=".", config_name="config.yaml")

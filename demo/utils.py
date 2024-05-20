@@ -4,7 +4,7 @@ COLORS = ['darkred', 'brown', 'red', 'salmon', 'coral', 'orange', 'gold', 'yello
           'teal', 'turquoise', 'cyan', 'lightblue', 'blue', 'darkblue', 'purple', 'lightpurple', 'lavender', 'magenta',
           'pink']
 
-SCALE_COLORS = colors = [
+SCALE_RAINBOW_COLORS = [
     "#FF0000",  # Red
     "#FF7F00",  # Orange
     "#FFFF00",  # Yellow
@@ -19,7 +19,8 @@ SCALE_COLORS = colors = [
 
 
 def show_heatmap(plotter, mesh, scores, masks):
-    plotter.add_text("Showing heatmap in rainbow style, from red (the lowest score) to violet (the highest score)", font_size=12, position="lower_left")
+    plotter.add_text("Showing heatmap in rainbow style, from red (the lowest score) to violet (the highest score)",
+                     font_size=12, position="lower_left")
     clean(masks, scores)
     for i in masks:
         if scores[i] > 0:
@@ -30,10 +31,11 @@ def show_heatmap(plotter, mesh, scores, masks):
 def get_color(score):
     # Calculate the index in the color list. Assuming the score range is from 0 to 0.5
     normalized_score = score / 0.5
-    index = int(normalized_score * (len(colors) - 1))
-    return colors[index]
+    index = int(normalized_score * (len(SCALE_RAINBOW_COLORS) - 1))
+    return SCALE_RAINBOW_COLORS[index]
 
 
+# Remove masks with empty projection and their embeddings
 def clean(dict1, dict2):
     keys_to_remove = [key for key in dict1 if len(dict1[key]) == 0]
 

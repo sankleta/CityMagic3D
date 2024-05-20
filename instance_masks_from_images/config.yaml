@@ -5,7 +5,8 @@ hydra:
   run:
     dir: ./outputs/${hydra.job.name}/${now:%Y-%m-%d_%H-%M-%S}
 samples: 10
-start_from: null
+start_from_img: null
+end_at_img: null
 resized_img_width: 304
 resized_img_height: 228
 sam_model_type: vit_h

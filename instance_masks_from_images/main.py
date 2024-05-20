@@ -61,13 +61,14 @@ def main(cfg: DictConfig):
     sam_mask_generator = load_sam_mask_generator(cfg)
     image_text_model = load_image_text_model(cfg.image_text_model)
     images_dir = cfg.scene.images_dir
+    files = os.listdir(images_dir)
+    if cfg.start_from_img:
+        files = files[files.index(cfg.start_from_img):]
+    if cfg.end_at_img:
+        files = files[:files.index(cfg.end_at_img)]
     if cfg.samples > 0:
-        files = random.sample(os.listdir(images_dir), cfg.samples)
-    else:
-        files = os.listdir(images_dir)
-        if cfg.start_from:
-            files = files[files.index(cfg.start_from):]
-
+        files = random.sample(files, cfg.samples)
+ 
     # mask_metadata = {}
     
     # load scene with point cloud, camera info
@@ -80,9 +81,9 @@ def main(cfg: DictConfig):
     for i, img_name in enumerate(files):
         logger.info(f"Processing image {i+1}/{len(files)}: {img_name}")
         img_path = os.path.join(cfg.scene.images_dir, img_name)
-        img = Image.open(img_path).convert("RGB")
-        logger.info(f"image size: {img.size}")
-        img = img.resize((cfg.resized_img_width, cfg.resized_img_height), Image.Resampling.LANCZOS)
+        orig_img = Image.open(img_path).convert("RGB")
+        logger.info(f"image size: {orig_img.size}")
+        img = orig_img.resize((cfg.resized_img_width, cfg.resized_img_height), Image.Resampling.LANCZOS)
         logger.info(f"resized image size: {img.size}")
         image_masks = generate_sam_masks(cfg, img_name, img, sam_mask_generator)
 
@@ -100,7 +101,7 @@ def main(cfg: DictConfig):
                 logger.info(f"Skipped too small mask {i}")
                 continue
             save_masked_image = os.path.join(output_dir(), f"{img_name}__mask_{i}.png") if cfg.debug else None
-            text_embedding = extract_text_features(image_text_model, img, img_mask, save_masked_image)
+            text_embedding = extract_text_features(image_text_model, orig_img, img_mask, save_masked_image)
             mask_indices[str(i)] = get_indices_on_point_cloud(resized_resolution, projected_points, visibility_mask, img_mask, camera)
             mask_text_embeddings[str(i)] = text_embedding
 

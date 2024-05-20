@@ -51,7 +51,7 @@ def get_indices_on_point_cloud(resized_resolution, projected_points, visibility_
     return np.where(all_points_mask)[0]
 
 
-@hydra.main(version_base="1.3", config_path=".", config_name="config.yaml")
+@hydra.main(version_base="1.3", config_path=".", config_name="config2.yaml")
 def main(cfg: DictConfig):
     # Load the SAM model
     sam_mask_generator = load_sam_mask_generator(cfg)

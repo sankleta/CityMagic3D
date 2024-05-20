@@ -1,14 +1,20 @@
 import numpy as np
 import pyvista as pv
 
-from instance_masks_from_images import clip
+from instance_masks_from_images import image_text
 
 point_cloud = pv.read(r"C:\Users\sankl\Downloads\WMSC\WMSC_points.ply")
+loaded_masks = np.load(r'C:\Users\sankl\PycharmProjects\CityMagic3D\instance_masks_from_images\outputs\instance_masks_from_images\2024-05-19_21-46-05\DJI_0887.JPG__mask_indices.npz')
+loaded_text = np.load(r'C:\Users\sankl\PycharmProjects\CityMagic3D\instance_masks_from_images\outputs\instance_masks_from_images\2024-05-19_21-46-05\DJI_0887.JPG__mask_text_embeddings.npz')
 
+
+mask_embeddings = {key: loaded_masks[key] for key in loaded_masks}
+mask_text_embeddings = {key: loaded_text[key].reshape(768,) for key in loaded_text}
 query = "vegetation"
-clip.load_clip("google/siglip-base-patch16-224")
-qe = clip.get_query_embedding(clip, query)
+model = image_text.load_image_text_model("google/siglip-base-patch16-224")
+qe = image_text.get_query_embedding(model, query)
 
+scores = image_text.compute_cosine_similarity_scores(mask_text_embeddings, qe)
 
 
 # Create a plotter object

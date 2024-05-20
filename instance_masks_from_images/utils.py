@@ -3,7 +3,7 @@ import numpy as np
 from PIL import Image
 
 from processing import BlocksExchange_xml_parser
-from scene import Camera
+from instance_masks_from_images.scene import Camera
 
 
 def output_dir():

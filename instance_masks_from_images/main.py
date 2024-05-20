@@ -11,10 +11,10 @@ from omegaconf import DictConfig
 from PIL import Image
 import torch
 
-from image_text import load_image_text_model, extract_text_features
-from utils import get_extrinsic_matrix, load_image_info, output_dir
-from sam import load_sam_mask_generator, show_masks
-from scene import Scene
+from instance_masks_from_images.image_text import load_image_text_model, extract_text_features
+from instance_masks_from_images.utils import get_extrinsic_matrix, load_image_info, output_dir
+from instance_masks_from_images.sam import load_sam_mask_generator, show_masks
+from instance_masks_from_images.scene import Scene
 
 logger = logging.getLogger(__name__)
 
@@ -24,7 +24,8 @@ def generate_sam_masks(cfg, img_name, img, sam_mask_generator):
     with torch.no_grad():
         image_masks = sam_mask_generator.generate(img_arr)
     logger.info(f"Generated {len(image_masks)} masks for image {img_name}")
-    show_masks(image_masks, img_arr, os.path.join(output_dir(), f"{img_name}__mask_visu.png"))
+    if cfg.debug:
+        show_masks(image_masks, img_arr, os.path.join(output_dir(), f"{img_name}__mask_visu.png"))
     save_masks_as_npz(image_masks, os.path.join(output_dir(), f"{img_name}__masks.npz"))
     return image_masks
 
@@ -53,6 +54,8 @@ def get_indices_on_point_cloud(resized_resolution, projected_points, visibility_
 
 @hydra.main(version_base="1.3", config_path=".", config_name="config.yaml")
 def main(cfg: DictConfig):
+    if cfg.debug:
+        logging.basicConfig(level=logging.DEBUG)
     # Load the SAM model
     sam_mask_generator = load_sam_mask_generator(cfg)
     image_text_model = load_image_text_model(cfg.image_text_model)
@@ -87,12 +90,13 @@ def main(cfg: DictConfig):
 
         logger.info("Adding image-text embedding and projecting masks to point cloud...")
         for i, img_mask in enumerate(image_masks):
-            logger.info(f"Mask {i}")
+            logger.debug(f"Mask {i}")
             # Have to remove very small masks (dots and lines), image_text_model doesn't respond well
             if img_mask['bbox'][2] < 2 or img_mask['bbox'][3] < 2:
                 logger.info(f"Skipped too small mask {i}")
                 continue
-            text_embedding = extract_text_features(image_text_model, img, img_mask)
+            save_masked_image = os.path.join(output_dir(), f"{img_name}__mask_{i}.png") if cfg.debug else None
+            text_embedding = extract_text_features(image_text_model, img, img_mask, save_masked_image)
             mask_indices[str(i)] = get_indices_on_point_cloud(resized_resolution, projected_points, visibility_mask, img_mask, camera)
             mask_text_embeddings[str(i)] = text_embedding
 

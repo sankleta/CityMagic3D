@@ -23,6 +23,7 @@ def generate_sam_masks(cfg, img_name, img, sam_mask_generator):
     img_arr = np.array(img)
     with torch.no_grad():
         image_masks = sam_mask_generator.generate(img_arr)
+    image_masks = [mask for mask in image_masks if mask["area"] > cfg.sam_mask_gen_params.min_mask_region_area]
     logger.info(f"Generated {len(image_masks)} masks for image {img_name}")
     if cfg.debug:
         show_masks(image_masks, img_arr, os.path.join(output_dir(), f"{img_name}__mask_visu.png"))
@@ -64,9 +65,11 @@ def main(cfg: DictConfig):
         files = random.sample(os.listdir(images_dir), cfg.samples)
     else:
         files = os.listdir(images_dir)
+        if cfg.start_from:
+            files = files[files.index(cfg.start_from):]
 
-    mask_metadata = {}
-
+    # mask_metadata = {}
+    
     # load scene with point cloud, camera info
     scene = Scene(cfg.scene)
     camera, poses_for_images = load_image_info(cfg)
@@ -74,7 +77,8 @@ def main(cfg: DictConfig):
     resized_resolution = np.array([cfg.resized_img_width, cfg.resized_img_height], dtype=np.uint16)
 
     # generate masks from images and save masks as npz
-    for img_name in files:
+    for i, img_name in enumerate(files):
+        logger.info(f"Processing image {i+1}/{len(files)}: {img_name}")
         img_path = os.path.join(cfg.scene.images_dir, img_name)
         img = Image.open(img_path).convert("RGB")
         logger.info(f"image size: {img.size}")
@@ -106,16 +110,18 @@ def main(cfg: DictConfig):
 
         for img_mask in image_masks:
             del (img_mask["segmentation"])
-        mask_metadata[img_name] = image_masks
         gc.collect()
         torch.cuda.empty_cache()
 
-    # save mask metadata
-    json.dump(mask_metadata, open(os.path.join(output_dir(), "mask_metadata.json"), "w"))
+        # save mask metadata
+        with open(os.path.join(output_dir(), f"{img_name}__mask_metadata.json"), "a") as f:
+            for img_mask in image_masks:
+                json.dump(img_mask, f)
+                f.write("\n")
 
     # TODO visualize
 
-    # TODO: merging masks corresponding to the same object
+    # TODO: merging masks corresponding to the same object (in a second phase)
 
 
 if __name__ == "__main__":

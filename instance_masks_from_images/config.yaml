@@ -4,20 +4,21 @@ hydra:
     chdir: false
   run:
     dir: ./outputs/${hydra.job.name}/${now:%Y-%m-%d_%H-%M-%S}
-samples: 20
-resized_img_width: 400
-resized_img_height: 300
+samples: 10
+start_from: null
+resized_img_width: 304
+resized_img_height: 228
 sam_model_type: vit_h
 sam_checkpoint: /media/papjuli/Data/data/3DV_project/openmask3d_resources/sam_vit_h_4b8939.pth
 image_text_model: google/siglip-base-patch16-224
 debug: true
 sam_mask_gen_params:
-  points_per_side: 20
+  points_per_side: 24
   pred_iou_thresh: 0.9
   stability_score_thresh: 0.95
   crop_n_layers: 1
   crop_n_points_downscale_factor: 2
-  min_mask_region_area: 50  # Requires open-cv to run post-processing
+  min_mask_region_area: 42  # Requires open-cv to run post-processing
 scene:
   # point_cloud_path: /media/papjuli/Data/data/3DV_project/STPLS3D/point_clouds/RealWorldData/RA_points.ply
   point_cloud_path: /media/papjuli/Data/data/3DV_project/processed/STPLS3D/mesh/RA_1M.ply

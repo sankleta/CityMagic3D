@@ -68,8 +68,6 @@ def main(cfg: DictConfig):
         files = files[:files.index(cfg.end_at_img)]
     if cfg.samples > 0:
         files = random.sample(files, cfg.samples)
- 
-    # mask_metadata = {}
     
     # load scene with point cloud, camera info
     scene = Scene(cfg.scene)

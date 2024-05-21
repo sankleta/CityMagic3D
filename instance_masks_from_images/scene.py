@@ -36,12 +36,12 @@ class Scene:
         return o3d.io.read_triangle_model(mesh_path)
 
     def draw_mesh(self):
-        submeshes = [submesh_info.MESH for submesh_info in self.mesh.meshes]
+        submeshes = [submesh_info.mesh for submesh_info in self.mesh.meshes]
         o3d.visualization.draw_geometries(submeshes, mesh_show_back_face=True)
 
     def init_raycasting_scene(self):
         self.raycasting_scene = o3d.t.geometry.RaycastingScene()
-        submeshes = [submesh_info.MESH for submesh_info in self.mesh.meshes]
+        submeshes = [submesh_info.mesh for submesh_info in self.mesh.meshes]
         for submesh in submeshes:
             t_mesh = o3d.t.geometry.TriangleMesh.from_legacy(submesh)
             mesh_id = self.raycasting_scene.add_triangles(t_mesh)

@@ -25,7 +25,7 @@ def show_heatmap(plotter, mesh, scores, masks):
     for i in masks:
         if scores[i] > 0:
             plotter.add_points(mesh.points[masks[i], :], color=get_color(scores[i]), render_points_as_spheres=True,
-                               point_size=3, opacity=scores[i])
+                               point_size=3)
 
 
 def get_color(score):

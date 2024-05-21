@@ -1,5 +1,5 @@
 import torch
-from transformers import AutoProcessor, SiglipModel
+from transformers import CLIPProcessor, CLIPModel, AutoProcessor, SiglipModel
 
 from instance_masks_from_images.utils import mask_and_crop_image
 
@@ -7,8 +7,12 @@ DEVICE = torch.device('cuda' if torch.cuda.is_available() else "cpu")
 
 
 def load_image_text_model(model_id):
-    image_text_model = {"processor": AutoProcessor.from_pretrained(model_id),
-                        "model": SiglipModel.from_pretrained(model_id).to(DEVICE)}
+    if "siglip" in model_id:
+        image_text_model = {"processor": AutoProcessor.from_pretrained(model_id),
+                    "model": SiglipModel.from_pretrained(model_id).to(DEVICE)}
+    else:
+        image_text_model = {"processor": CLIPProcessor.from_pretrained(model_id),
+                            "model": CLIPModel.from_pretrained(model_id).to(DEVICE)}
     return image_text_model
 
 

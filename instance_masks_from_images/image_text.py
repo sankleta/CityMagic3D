@@ -12,8 +12,10 @@ def load_image_text_model(model_id):
     return image_text_model
 
 
-def extract_text_features(image_text_model, image, mask):
+def extract_text_features(image_text_model, image, mask, save_masked_image=None):
     masked_image = mask_and_crop_image(image, mask)
+    if save_masked_image:
+        masked_image.save(save_masked_image)
 
     with torch.no_grad():
         inputs = image_text_model["processor"](images=masked_image, return_tensors="pt").to(DEVICE)

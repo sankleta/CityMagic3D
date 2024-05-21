@@ -1,9 +1,14 @@
+import logging
+
 import hydra
 import numpy as np
 from PIL import Image
 
 from processing import BlocksExchange_xml_parser
-from scene import Camera
+from instance_masks_from_images.scene import Camera
+
+
+logger = logging.getLogger(__name__)
 
 
 def output_dir():
@@ -26,12 +31,20 @@ def load_image_info(cfg):
     return camera, poses_for_images
 
 
-def mask_and_crop_image(image, mask):
+def mask_and_crop_image(orig_image, mask):
     mask_img = Image.fromarray((mask["segmentation"] * 255).astype(np.uint8))
+    mask_img = mask_img.resize(orig_image.size, Image.Resampling.NEAREST)
    # mask_img.show(title="Mask")
-    masked_image = Image.composite(image, Image.new("RGB", image.size), mask_img)
+    # masked_image = Image.composite(orig_image, Image.new("RGB", orig_image.size), mask_img)
+    resize_factor = orig_image.size[0] / mask["segmentation"].shape[1]
+    logger.debug(f"Resize factor: {resize_factor}")
     x, y, width, height = mask['bbox']
-    masked_image = masked_image.crop((x, y, x + width, y + height))
+    x = int(x * resize_factor)
+    y = int(y * resize_factor)
+    width = int(width * resize_factor)
+    height = int(height * resize_factor)
+    # masked_image = masked_image.crop((x, y, x + width, y + height))
+    masked_image = orig_image.crop((x, y, x + width, y + height))
    # image.show(title="Original Image")
    # masked_image.show(title="Masked Image")
     return masked_image

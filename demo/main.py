@@ -1,14 +1,17 @@
 import numpy as np
 import pyvista as pv
 
-from demo.utils import show_top_20_instances, show_heatmap
+from demo.utils import show_top_n_instances, show_heatmap, clean
 from instance_masks_from_images import image_text
 
-TEXT_EMBEDDING_SIZE = 768
+
+
+#TEXT_EMBEDDING_SIZE = 768
+TEXT_EMBEDDING_SIZE = 512
 
 MESH = pv.read(r"C:\Users\sankl\Downloads\RA\RA_1M.ply")
-LOADED_MASKS = np.load(r'C:\Users\sankl\Downloads\merged_masks.npz')
-LOADED_TEXT_EMBEDDINGS = np.load(r'C:\Users\sankl\Downloads\merged_embeddings.npz')
+LOADED_MASKS = np.load(r'C:\Users\sankl\Downloads\2024-05-21_22-26-11\merged_masks.npz')
+LOADED_TEXT_EMBEDDINGS = np.load(r'C:\Users\sankl\Downloads\2024-05-21_22-26-11\merged_embeddings__max.npz')
 
 QUERY = "green"
 
@@ -17,7 +20,9 @@ mask_embeddings = {key: LOADED_MASKS[key] for key in LOADED_MASKS}
 mask_text_embeddings = {key: LOADED_TEXT_EMBEDDINGS[key].reshape(TEXT_EMBEDDING_SIZE, ) for key in
                         LOADED_TEXT_EMBEDDINGS}
 
-model = image_text.load_image_text_model("google/siglip-base-patch16-224")
+clean(mask_embeddings, mask_text_embeddings)
+
+model = image_text.load_image_text_model("openai/clip-vit-base-patch32")
 query_embeddings = image_text.get_query_embedding(model, QUERY)
 
 scores = image_text.compute_cosine_similarity_scores(mask_text_embeddings, query_embeddings)
@@ -34,8 +39,6 @@ show_heatmap(plotter, MESH, scores, mask_embeddings)
 plotter.subplot(0, 1)
 plotter.add_mesh(MESH, scalars='RGBA', rgb=True)
 # Add masks as points on top
-show_top_20_instances(plotter, MESH, scores, mask_embeddings)
+show_top_n_instances(plotter, MESH, scores, mask_embeddings, 17)
 plotter.show()
 
-# Display the plot
-plotter.show()

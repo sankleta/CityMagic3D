@@ -10,10 +10,10 @@ from instance_masks_from_images import image_text
 TEXT_EMBEDDING_SIZE = 512
 
 MESH = pv.read(r"C:\Users\sankl\Downloads\RA\RA_1M.ply")
-LOADED_MASKS = np.load(r'C:\Users\sankl\Downloads\2024-05-21_22-26-11\merged_masks.npz')
-LOADED_TEXT_EMBEDDINGS = np.load(r'C:\Users\sankl\Downloads\2024-05-21_22-26-11\merged_embeddings__max.npz')
+LOADED_MASKS = np.load(r'C:\Users\sankl\PycharmProjects\CityMagic3D\merge_masks\outputs\merge_masks\2024-05-24_23-50-30\merged_masks.npz')
+LOADED_TEXT_EMBEDDINGS = np.load(r'C:\Users\sankl\PycharmProjects\CityMagic3D\merge_masks\outputs\merge_masks\2024-05-24_23-50-30\merged_embeddings__avg.npz')
 
-QUERY = "green"
+QUERY = "pool"
 
 mask_embeddings = {key: LOADED_MASKS[key] for key in LOADED_MASKS}
 
@@ -28,17 +28,17 @@ query_embeddings = image_text.get_query_embedding(model, QUERY)
 scores = image_text.compute_cosine_similarity_scores(mask_text_embeddings, query_embeddings)
 
 # Create a plotter object
-plotter = pv.Plotter(shape=(1, 2))
-plotter.subplot(0, 0)
+plotter = pv.Plotter()
+# plotter.subplot(0, 0)
 plotter.add_text(f"Query: '{QUERY}'", font_size=14)
 
-# Add the mesh to the plotter
-plotter.add_mesh(MESH, scalars='RGBA', rgb=True)
-show_heatmap(plotter, MESH, scores, mask_embeddings)
-
-plotter.subplot(0, 1)
+# # Add the mesh to the plotter
+# plotter.add_mesh(MESH, scalars='RGBA', rgb=True)
+# show_heatmap(plotter, MESH, scores, mask_embeddings)
+#
+# plotter.subplot(0, 1)
 plotter.add_mesh(MESH, scalars='RGBA', rgb=True)
 # Add masks as points on top
-show_top_n_instances(plotter, MESH, scores, mask_embeddings, 17)
+show_top_n_instances(plotter, MESH, scores, mask_embeddings, 30)
 plotter.show()
 

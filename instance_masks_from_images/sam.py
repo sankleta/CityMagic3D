@@ -36,6 +36,7 @@ def show_masks(masks, image, output_path=None):
     plt.axis('off')
     if output_path:
         plt.savefig(output_path)
+        plt.close()
     else:
         plt.show()
 

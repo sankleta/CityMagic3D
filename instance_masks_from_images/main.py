@@ -11,10 +11,10 @@ from omegaconf import DictConfig
 from PIL import Image
 import torch
 
-from image_text import load_image_text_model, extract_text_features
-from utils import get_extrinsic_matrix, load_image_info, output_dir
-from sam import load_sam_mask_generator, show_masks
-from scene import Scene
+from instance_masks_from_images.image_text import load_image_text_model, extract_text_features
+from instance_masks_from_images.utils import get_extrinsic_matrix, load_image_info, output_dir
+from instance_masks_from_images.sam import load_sam_mask_generator, show_masks
+from instance_masks_from_images.scene import Scene
 
 logger = logging.getLogger(__name__)
 
@@ -23,8 +23,10 @@ def generate_sam_masks(cfg, img_name, img, sam_mask_generator):
     img_arr = np.array(img)
     with torch.no_grad():
         image_masks = sam_mask_generator.generate(img_arr)
+    image_masks = [mask for mask in image_masks if mask["area"] > cfg.sam_mask_gen_params.min_mask_region_area]
     logger.info(f"Generated {len(image_masks)} masks for image {img_name}")
-    show_masks(image_masks, img_arr, os.path.join(output_dir(), f"{img_name}__mask_visu.png"))
+    if cfg.debug:
+        show_masks(image_masks, img_arr, os.path.join(output_dir(), f"{img_name}__mask_visu.png"))
     save_masks_as_npz(image_masks, os.path.join(output_dir(), f"{img_name}__masks.npz"))
     return image_masks
 
@@ -48,22 +50,25 @@ def get_indices_on_point_cloud(resized_resolution, projected_points, visibility_
 
     all_points_mask = np.zeros(len(projected_points), dtype=bool)
     all_points_mask[visibility_mask] = visible_points_mask
-    return np.where(all_points_mask)[0]
+    return np.where(all_points_mask)[0].astype(np.uint32)
 
 
 @hydra.main(version_base="1.3", config_path=".", config_name="config2.yaml")
 def main(cfg: DictConfig):
+    if cfg.debug:
+        logging.basicConfig(level=logging.DEBUG)
     # Load the SAM model
     sam_mask_generator = load_sam_mask_generator(cfg)
     image_text_model = load_image_text_model(cfg.image_text_model)
     images_dir = cfg.scene.images_dir
+    files = os.listdir(images_dir)
+    if cfg.start_from_img:
+        files = files[files.index(cfg.start_from_img):]
+    if cfg.end_at_img:
+        files = files[:files.index(cfg.end_at_img)]
     if cfg.samples > 0:
-        files = random.sample(os.listdir(images_dir), cfg.samples)
-    else:
-        files = os.listdir(images_dir)
-
-    mask_metadata = {}
-
+        files = random.sample(files, cfg.samples)
+    
     # load scene with point cloud, camera info
     scene = Scene(cfg.scene)
     camera, poses_for_images = load_image_info(cfg)
@@ -71,11 +76,12 @@ def main(cfg: DictConfig):
     resized_resolution = np.array([cfg.resized_img_width, cfg.resized_img_height], dtype=np.uint16)
 
     # generate masks from images and save masks as npz
-    for img_name in files:
+    for i, img_name in enumerate(files):
+        logger.info(f"Processing image {i+1}/{len(files)}: {img_name}")
         img_path = os.path.join(cfg.scene.images_dir, img_name)
-        img = Image.open(img_path).convert("RGB")
-        logger.info(f"image size: {img.size}")
-        img = img.resize((cfg.resized_img_width, cfg.resized_img_height), Image.Resampling.LANCZOS)
+        orig_img = Image.open(img_path).convert("RGB")
+        logger.info(f"image size: {orig_img.size}")
+        img = orig_img.resize((cfg.resized_img_width, cfg.resized_img_height), Image.Resampling.LANCZOS)
         logger.info(f"resized image size: {img.size}")
         image_masks = generate_sam_masks(cfg, img_name, img, sam_mask_generator)
 
@@ -87,12 +93,13 @@ def main(cfg: DictConfig):
 
         logger.info("Adding image-text embedding and projecting masks to point cloud...")
         for i, img_mask in enumerate(image_masks):
-            logger.info(f"Mask {i}")
+            logger.debug(f"Mask {i}")
             # Have to remove very small masks (dots and lines), image_text_model doesn't respond well
             if img_mask['bbox'][2] < 2 or img_mask['bbox'][3] < 2:
                 logger.info(f"Skipped too small mask {i}")
                 continue
-            text_embedding = extract_text_features(image_text_model, img, img_mask)
+            save_masked_image = os.path.join(output_dir(), f"{img_name}__mask_{i}.png") if cfg.debug else None
+            text_embedding = extract_text_features(image_text_model, orig_img, img_mask, save_masked_image)
             mask_indices[str(i)] = get_indices_on_point_cloud(resized_resolution, projected_points, visibility_mask, img_mask, camera)
             mask_text_embeddings[str(i)] = text_embedding
 
@@ -102,16 +109,18 @@ def main(cfg: DictConfig):
 
         for img_mask in image_masks:
             del (img_mask["segmentation"])
-        mask_metadata[img_name] = image_masks
         gc.collect()
         torch.cuda.empty_cache()
 
-    # save mask metadata
-    json.dump(mask_metadata, open(os.path.join(output_dir(), "mask_metadata.json"), "w"))
+        # save mask metadata
+        with open(os.path.join(output_dir(), f"{img_name}__mask_metadata.json"), "a") as f:
+            for img_mask in image_masks:
+                json.dump(img_mask, f)
+                f.write("\n")
 
     # TODO visualize
 
-    # TODO: merging masks corresponding to the same object
+    # TODO: merging masks corresponding to the same object (in a second phase)
 
 
 if __name__ == "__main__":

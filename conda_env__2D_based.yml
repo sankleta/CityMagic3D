@@ -18,6 +18,7 @@ dependencies:
   - pytorch-cuda=11.8
   - jupyterlab
   - ipython
+  - pyqtree=1.0.*
 
   - pip:
     - git+https://github.com/facebookresearch/segment-anything.git

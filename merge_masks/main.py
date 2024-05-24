@@ -3,6 +3,7 @@ from dataclasses import dataclass
 import glob
 import logging
 import os
+import random
 import time
 from typing import Optional
 
@@ -11,9 +12,11 @@ import open3d as o3d
 import hydra
 import networkx as nx
 import numpy as np
+import pyqtree
 
 from instance_masks_from_images.utils import output_dir, get_extrinsic_matrix
 from instance_masks_from_images.scene import Camera
+from merge_masks.utils import get_2d_bounding_box_of_point_set
 from processing import BlocksExchange_xml_parser
 
 logger = logging.getLogger(__name__)
@@ -88,13 +91,7 @@ class ViewIntersectionChecker:
         return camera_lines
 
 
-def merge_by_intersection_ratio(cfg: DictConfig):
-    mask_indices_files = glob.glob("*__mask_indices.npz", root_dir=cfg.input_dir)
-    logger.info(f"Found {len(mask_indices_files)} mask indices files.")
-    mask_indices_files.sort()
-    total_size = sum([os.stat(os.path.join(cfg.input_dir, file)).st_size for file in mask_indices_files])
-    logger.info(f"Total size of mask indices files: {total_size / 1024**2} MB.")
-
+def build_graph_and_mask_infos__filter_view_intersection(cfg: DictConfig, mask_indices_files: list[str]):
     graph = nx.Graph()
     mask_infos_by_image = defaultdict(dict)
     view_intersection_checker = ViewIntersectionChecker(cfg)
@@ -107,6 +104,9 @@ def merge_by_intersection_ratio(cfg: DictConfig):
         embeddings = np.load(embedding_file)
         for key in img_masks.keys():
             mask = set(img_masks[key])
+            if len(mask) < cfg.min_mask_size:
+                logger.debug(f"Mask {key} is too small, skipping.")
+                continue
             embedding = embeddings[key]
             mask_info = MaskInfo(img_name, key, mask, embedding)
             graph.add_node((img_name, key))
@@ -120,6 +120,56 @@ def merge_by_intersection_ratio(cfg: DictConfig):
                 for other_key, other_mask_info in mask_infos_by_image[other_img_name].items():
                     if mask_info.is_close(other_mask_info, cfg.min_intersection_ratio):
                         graph.add_edge((img_name, key), (other_img_name, other_key))
+    return graph, mask_infos_by_image
+
+
+def build_graph_and_mask_infos__quadtree(cfg: DictConfig, mask_indices_files: list[str]):
+    graph = nx.Graph()
+    mask_infos_by_image = defaultdict(dict)
+    quadtree_of_all_masks = pyqtree.Index(bbox=cfg.bbox)
+    point_cloud = o3d.io.read_point_cloud(cfg.point_cloud_path)
+
+    for i, file in enumerate(mask_indices_files):
+        img_name = file.split("__")[0]
+        logger.info(f"Loading {file}... {i}/{len(mask_indices_files)}")
+        img_masks = np.load(os.path.join(cfg.input_dir, file))
+        embedding_file = os.path.join(cfg.input_dir, f"{img_name}__mask_text_embeddings.npz")
+        embeddings = np.load(embedding_file)
+        
+        for key in img_masks.keys():
+            mask = set(img_masks[key])
+            if len(mask) < cfg.min_mask_size:
+                logger.debug(f"Mask {key} is too small, skipping.")
+                continue
+            embedding = embeddings[key]
+            mask_info = MaskInfo(img_name, key, mask, embedding)
+            graph.add_node((img_name, key))
+            mask_infos_by_image[img_name][key] = mask_info
+
+            bbox = get_2d_bounding_box_of_point_set(point_cloud, img_masks[key])
+
+            for item in quadtree_of_all_masks.intersect(bbox):
+                other_img_name, other_key = item
+                other_mask_info = mask_infos_by_image[other_img_name][other_key]
+                if mask_info.is_close(other_mask_info, cfg.min_intersection_ratio):
+                    graph.add_edge((img_name, key), (other_img_name, other_key))
+
+            quadtree_of_all_masks.insert((img_name, key), bbox)
+
+    logger.info(f"Graph has {len(graph.nodes)} nodes and {len(graph.edges)}.")
+    return graph, mask_infos_by_image
+
+
+def merge_by_intersection_ratio(cfg: DictConfig):
+    mask_indices_files = glob.glob("*__mask_indices.npz", root_dir=cfg.input_dir)
+    if cfg.max_files:
+        mask_indices_files = random.sample(mask_indices_files, cfg.max_files)
+    logger.info(f"{'Selected' if cfg.max_files else 'Found'} {len(mask_indices_files)} mask indices files.")
+    total_size = sum([os.stat(os.path.join(cfg.input_dir, file)).st_size for file in mask_indices_files])
+    logger.info(f"Total size of mask indices files: {total_size / 1024**2} MB.")
+
+    graph, mask_infos_by_image = build_graph_and_mask_infos__quadtree(cfg, mask_indices_files)
+    
     logger.info(f"Graph has {len(graph.nodes)} nodes and {len(graph.edges)} edges.")
     merged_mask_infos = {}
     for i, connected_component in enumerate(nx.connected_components(graph)):

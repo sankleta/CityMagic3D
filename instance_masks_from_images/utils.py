@@ -31,7 +31,7 @@ def load_image_info(cfg):
     return camera, poses_for_images
 
 
-def mask_and_crop_image(orig_image, mask):
+def mask_and_crop_image(orig_image, mask, crop_margin=0):
     mask_img = Image.fromarray((mask["segmentation"] * 255).astype(np.uint8))
     mask_img = mask_img.resize(orig_image.size, Image.Resampling.NEAREST)
    # mask_img.show(title="Mask")
@@ -43,7 +43,10 @@ def mask_and_crop_image(orig_image, mask):
     y = int(y * resize_factor)
     width = int(width * resize_factor)
     height = int(height * resize_factor)
-    # masked_image = masked_image.crop((x, y, x + width, y + height))
+    x = max(0, x - crop_margin)
+    y = max(0, y - crop_margin)
+    width = min(orig_image.size[0] - x, width + 2 * crop_margin)
+    height = min(orig_image.size[1] - y, height + 2 * crop_margin)
     masked_image = orig_image.crop((x, y, x + width, y + height))
    # image.show(title="Original Image")
    # masked_image.show(title="Masked Image")

@@ -16,8 +16,8 @@ def load_image_text_model(model_id):
     return image_text_model
 
 
-def extract_text_features(image_text_model, image, mask, save_masked_image=None):
-    masked_image = mask_and_crop_image(image, mask)
+def extract_text_features(image_text_model, image, mask, save_masked_image=None, crop_margin=0):
+    masked_image = mask_and_crop_image(image, mask, crop_margin)
     if save_masked_image:
         masked_image.save(save_masked_image)
 

@@ -99,7 +99,7 @@ def main(cfg: DictConfig):
                 logger.info(f"Skipped too small mask {i}")
                 continue
             save_masked_image = os.path.join(output_dir(), f"{img_name}__mask_{i}.png") if cfg.debug else None
-            text_embedding = extract_text_features(image_text_model, orig_img, img_mask, save_masked_image)
+            text_embedding = extract_text_features(image_text_model, orig_img, img_mask, save_masked_image, cfg.crop_margin)
             mask_indices[str(i)] = get_indices_on_point_cloud(resized_resolution, projected_points, visibility_mask, img_mask, camera)
             mask_text_embeddings[str(i)] = text_embedding
 

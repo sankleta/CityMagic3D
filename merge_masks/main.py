@@ -34,16 +34,30 @@ class MaskInfo:
     def size(self):
         return len(self.point_set)
     
-    def is_close(self, other_mask_info, min_intersection_ratio):
-        intersection = len(self.point_set.intersection(other_mask_info.point_set))
-        return intersection > self.size * min_intersection_ratio \
+    @staticmethod
+    def is_close(mask_info, other_mask_info, min_intersection_ratio):
+        intersection = len(mask_info.point_set.intersection(other_mask_info.point_set))
+        return intersection > mask_info.size * min_intersection_ratio \
             or intersection > other_mask_info.size * min_intersection_ratio
     
-    def is_close_w_embedding(self, other_mask_info, min_intersection_ratio, min_embedding_similarity):
-        cosine_similarity = np.dot(self.embedding, other_mask_info.embedding) / \
-            (np.linalg.norm(self.embedding) * np.linalg.norm(other_mask_info.embedding))
-        return cosine_similarity > min_embedding_similarity and self.is_close(other_mask_info, min_intersection_ratio)
-
+    @staticmethod
+    def is_close_both_ways(mask_info, other_mask_info, min_intersection_ratio):
+        intersection = len(mask_info.point_set.intersection(other_mask_info.point_set))
+        return intersection > mask_info.size * min_intersection_ratio \
+            and intersection > other_mask_info.size * min_intersection_ratio
+    
+    @staticmethod
+    def is_close_iou(mask_info, other_mask_info, min_iou):
+        intersection = len(mask_info.point_set.intersection(other_mask_info.point_set))
+        union = len(mask_info.point_set.union(other_mask_info.point_set))
+        return intersection / union > min_iou
+    
+    @staticmethod
+    def is_close_w_embedding(mask_info, other_mask_info, min_intersection_ratio, min_embedding_similarity):
+        cosine_similarity = np.dot(mask_info.embedding, other_mask_info.embedding) / \
+            (np.linalg.norm(mask_info.embedding) * np.linalg.norm(other_mask_info.embedding))
+        return cosine_similarity > min_embedding_similarity and mask_info.is_close(other_mask_info, min_intersection_ratio)
+    
     @staticmethod
     def merge_masks(masks, key):
         merged_mask = set()
@@ -128,6 +142,7 @@ def build_graph_and_mask_infos__quadtree(cfg: DictConfig, mask_indices_files: li
     mask_infos_by_image = defaultdict(dict)
     quadtree_of_all_masks = pyqtree.Index(bbox=cfg.bbox)
     point_cloud = o3d.io.read_point_cloud(cfg.point_cloud_path)
+    is_close = getattr(MaskInfo, cfg.closeness_method)
 
     for i, file in enumerate(mask_indices_files):
         img_name = file.split("__")[0]
@@ -151,7 +166,7 @@ def build_graph_and_mask_infos__quadtree(cfg: DictConfig, mask_indices_files: li
             for item in quadtree_of_all_masks.intersect(bbox):
                 other_img_name, other_key = item
                 other_mask_info = mask_infos_by_image[other_img_name][other_key]
-                if mask_info.is_close(other_mask_info, cfg.min_intersection_ratio):
+                if is_close(mask_info, other_mask_info, **cfg.closeness_args):
                     graph.add_edge((img_name, key), (other_img_name, other_key))
 
             quadtree_of_all_masks.insert((img_name, key), bbox)

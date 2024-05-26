@@ -1,0 +1,10 @@
+hydra:
+  job:
+    name: demo
+    chdir: false
+  run:
+    dir: ./outputs/${hydra.job.name}/${now:%Y-%m-%d_%H-%M-%S}
+image_text_embedding_size: 512
+mesh_path: C:\Users\sankl\Downloads\RA\RA_1M.ply
+merged_masks: C:\Users\sankl\PycharmProjects\CityMagic3D\merge_masks\outputs\merge_masks\2024-05-26_23-24-18\merged_masks.npz
+merged_embeddings: C:\Users\sankl\PycharmProjects\CityMagic3D\merge_masks\outputs\merge_masks\2024-05-26_23-24-18\merged_embeddings__avg.npz

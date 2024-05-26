@@ -14,4 +14,8 @@ transformers~=4.40.2
 sentencepiece
 protobuf
 segment-anything
-pyvista
+pyvista~=0.43.8
+trame~=3.6.0
+networkx~=3.3
+Pyqtree~=1.0.0
+hydra

@@ -47,7 +47,6 @@ def show_top_n_instances(plotter, mesh, scores, masks, n):
     plotter.add_text(f"Showing top {n} matching instances", font_size=10, position="lower_left")
     plotter.set_color_cycler(COLORS)
     top_n = heapq.nlargest(n, scores, key=scores.get)
-    print(top_n)
 
     for i in top_n:
         plotter.add_points(mesh.points[masks[i], :], render_points_as_spheres=True, point_size=3)

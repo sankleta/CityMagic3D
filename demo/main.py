@@ -18,7 +18,7 @@ def load_data(cfg):
     mask_text_embeddings = {key: loaded_text_embeddings[key].reshape(cfg.image_text_embedding_size, ) for key in
                             loaded_text_embeddings}
 
-    model = image_text.load_image_text_model("openai/clip-vit-base-patch32")
+    model = image_text.load_image_text_model(cfg.image_text_model)
     return mesh, mask_embeddings, mask_text_embeddings, model
 
 

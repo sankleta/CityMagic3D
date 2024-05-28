@@ -5,6 +5,7 @@ hydra:
   run:
     dir: ./outputs/${hydra.job.name}/${now:%Y-%m-%d_%H-%M-%S}
 image_text_embedding_size: 512
-mesh_path: C:\Users\sankl\Downloads\RA\RA_1M.ply
-merged_masks: C:\Users\sankl\PycharmProjects\CityMagic3D\merge_masks\outputs\merge_masks\2024-05-26_23-24-18\merged_masks.npz
-merged_embeddings: C:\Users\sankl\PycharmProjects\CityMagic3D\merge_masks\outputs\merge_masks\2024-05-26_23-24-18\merged_embeddings__avg.npz
+image_text_model: openai/clip-vit-base-patch32
+mesh_path: /Users/sankleta/Development/machine-perception/CityMagic3D/data/RA_1M.ply
+merged_masks: /Users/sankleta/Development/machine-perception/CityMagic3D/data/merged_masks.npz
+merged_embeddings: /Users/sankleta/Development/machine-perception/CityMagic3D/data/merged_embeddings__avg.npz

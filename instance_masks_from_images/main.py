@@ -118,10 +118,6 @@ def main(cfg: DictConfig):
                 json.dump(img_mask, f)
                 f.write("\n")
 
-    # TODO visualize
-
-    # TODO: merging masks corresponding to the same object (in a second phase)
-
 
 if __name__ == "__main__":
     logger.info("Starting instance masks generation...")

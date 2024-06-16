@@ -1,6 +1,11 @@
 import numpy as np
 import open3d as o3d
 
+'''
+This unfinished script is the experiment with the point cloud cutting. We hoped to get Segment3D checkpoint.
+Segment3D is for indoors the same as Mask3D. It cannot handle scenes more than 10 meters large,we needed to cut.  
+'''
+
 
 def load_point_cloud(filename):
     return o3d.io.read_point_cloud(filename)
@@ -34,7 +39,7 @@ def downscale_cube(cube_points):
 pcd = load_point_cloud('your_point_cloud.pcd')
 
 # Define the cube size in meters
-cube_size_in_meters = 0.5  # Change this to your desired cube size
+cube_size_in_meters = 0.5
 
 # Split the point cloud into cubes of the specified size
 cubes = split_into_cubes(pcd, cube_size=cube_size_in_meters)

@@ -4,6 +4,8 @@ from zoedepth_utils import save_raw_16bit, colorize
 from PIL import Image
 import ssl
 
+'''This is a script with ZoeDepth metric depth estimator. 
+Some people swore by it, but it looks like it doesn't generalize well for outdoor scene'''
 
 # Set the directory for input images and output depth maps
 INPUT_PATH = r"C:\Users\sankl\Downloads\RA\RA"

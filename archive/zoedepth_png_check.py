@@ -1,6 +1,9 @@
 from PIL import Image
 import numpy as np
 
+'''This is a dummy script to check the statistics of the ZoeDepth metric depth estimator. 
+Some people swore by it, but it looks like it doesn't generalize well for outdoor scene'''
+
 
 def get_min_max_from_png(file_path):
     # Load the image

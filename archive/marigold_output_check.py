@@ -1,5 +1,9 @@
 import numpy as np
 
+'''This is a dummy script to check the output of the Marigold relative depth estimator. 
+In the end, the results were not good for our task and the depth is relative meaning we need to do extra leg work 
+to make it metric'''
+
 
 def load_npy_file(file_path):
     try:

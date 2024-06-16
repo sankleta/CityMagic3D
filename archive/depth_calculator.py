@@ -2,8 +2,12 @@ import cv2
 import open3d as o3d
 import numpy as np
 
-from BlocksExchange_xml_parser import parse_xml
+from processing.BlocksExchange_xml_parser import parse_xml
 from instance_masks_from_images.utils import get_extrinsic_matrix
+
+
+'''This is the first dummy attempt to calculate depth for images given the point cloud. 
+The problem here is the occluded objects that come through '''
 
 camera_xml_path = '/Users/sankleta/Downloads/OCCC example/OCCC_CamInfoCC.xml'
 imgs_base_path = "/Users/sankleta/Downloads/OCCC example"

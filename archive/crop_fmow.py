@@ -4,6 +4,13 @@ import json
 from PIL import Image
 import csv
 
+'''
+This script is to prepare the FMoW dataset (generate cropped images and requited text-image csv) to fine-tune CLIP. 
+The experimental task was to train to recognize pool. We didn't have enough time/computational resources to go this 
+route.
+However setup-wise it was not that complicated and the dataset is extensive.
+'''
+
 
 def traverse_and_collect_files(root_dir):
     collected_files = {'jpeg': [], 'json': []}
@@ -92,36 +99,6 @@ def main():
 
     # Create CSV file with cropped image paths and captions
     create_csv(cropped_files, output_csv)
-
-
-if __name__ == "__main__":
-    main()
-
-
-def main():
-    root_dir = r'C:\Users\sankl\Downloads\my'  # Replace with the path to your folder
-    output_dir = r'C:\Users\sankl\Downloads\pool'  # Replace with the path to the output folder
-
-    # Create the output directory if it doesn't exist
-    if not os.path.exists(output_dir):
-        os.makedirs(output_dir)
-
-    collected_files = traverse_and_collect_files(root_dir)
-
-    # Create a mapping from base filename to its paths
-    base_to_paths = {}
-    for jpeg_path in collected_files['jpeg']:
-        base_name = os.path.basename(jpeg_path).replace('_rgb.jpeg', '').replace('_rgb.jpg', '')
-        base_to_paths[base_name] = {'jpeg': jpeg_path}
-    for json_path in collected_files['json']:
-        base_name = os.path.basename(json_path).replace('_rgb.json', '')
-        if base_name in base_to_paths:
-            base_to_paths[base_name]['json'] = json_path
-
-    # Process each pair of JSON and JPEG files
-    for base_name, paths in base_to_paths.items():
-        if 'jpeg' in paths and 'json' in paths:
-            extract_bbox_and_crop_image(paths['json'], paths['jpeg'], output_dir)
 
 
 if __name__ == "__main__":

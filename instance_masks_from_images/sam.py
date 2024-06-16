@@ -21,7 +21,7 @@ def show_anns(anns):
     ax.set_autoscale_on(False)
 
     img = np.ones((sorted_anns[0]['segmentation'].shape[0], sorted_anns[0]['segmentation'].shape[1], 4))
-    img[:,:,3] = 0
+    img[:, :, 3] = 0
     for ann in sorted_anns:
         m = ann['segmentation']
         color_mask = np.concatenate([np.random.random(3), [0.35]])
@@ -39,5 +39,3 @@ def show_masks(masks, image, output_path=None):
         plt.close()
     else:
         plt.show()
-
-

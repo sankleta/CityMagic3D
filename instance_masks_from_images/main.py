@@ -53,7 +53,7 @@ def get_indices_on_point_cloud(resized_resolution, projected_points, visibility_
     return np.where(all_points_mask)[0].astype(np.uint32)
 
 
-@hydra.main(version_base="1.3", config_path=".", config_name="config.yaml")
+@hydra.main(version_base="1.3", config_path=".", config_name="config2.yaml")
 def main(cfg: DictConfig):
     if cfg.debug:
         logging.basicConfig(level=logging.DEBUG)
@@ -99,7 +99,7 @@ def main(cfg: DictConfig):
                 logger.info(f"Skipped too small mask {i}")
                 continue
             save_masked_image = os.path.join(output_dir(), f"{img_name}__mask_{i}.png") if cfg.debug else None
-            text_embedding = extract_text_features(image_text_model, orig_img, img_mask, save_masked_image)
+            text_embedding = extract_text_features(image_text_model, orig_img, img_mask, save_masked_image, cfg.crop_margin)
             mask_indices[str(i)] = get_indices_on_point_cloud(resized_resolution, projected_points, visibility_mask, img_mask, camera)
             mask_text_embeddings[str(i)] = text_embedding
 
@@ -117,10 +117,6 @@ def main(cfg: DictConfig):
             for img_mask in image_masks:
                 json.dump(img_mask, f)
                 f.write("\n")
-
-    # TODO visualize
-
-    # TODO: merging masks corresponding to the same object (in a second phase)
 
 
 if __name__ == "__main__":

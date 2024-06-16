@@ -14,3 +14,6 @@ transformers~=4.40.2
 sentencepiece
 protobuf
 segment-anything
+pyvista~=0.43.8
+Pyqtree~=1.0.0
+hydra

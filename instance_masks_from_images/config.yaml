@@ -4,7 +4,7 @@ hydra:
     chdir: false
   run:
     dir: ./outputs/${hydra.job.name}/${now:%Y-%m-%d_%H-%M-%S}
-samples: 10
+samples: 0  # 10
 start_from_img: null
 end_at_img: null
 resized_img_width: 400
@@ -12,7 +12,8 @@ resized_img_height: 300
 sam_model_type: vit_h
 sam_checkpoint: /media/papjuli/Data/data/3DV_project/openmask3d_resources/sam_vit_h_4b8939.pth
 image_text_model: openai/clip-vit-base-patch32
-debug: true
+crop_margin: 30
+debug: false  #true
 sam_mask_gen_params:
   points_per_side: 24
   pred_iou_thresh: 0.9

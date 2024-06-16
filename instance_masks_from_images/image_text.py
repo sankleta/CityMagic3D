@@ -16,8 +16,8 @@ def load_image_text_model(model_id):
     return image_text_model
 
 
-def extract_text_features(image_text_model, image, mask, save_masked_image=None):
-    masked_image = mask_and_crop_image(image, mask)
+def extract_text_features(image_text_model, image, mask, save_masked_image=None, crop_margin=0):
+    masked_image = mask_and_crop_image(image, mask, crop_margin)
     if save_masked_image:
         masked_image.save(save_masked_image)
 
@@ -25,3 +25,20 @@ def extract_text_features(image_text_model, image, mask, save_masked_image=None)
         inputs = image_text_model["processor"](images=masked_image, return_tensors="pt").to(DEVICE)
         masked_image_features = image_text_model["model"].get_image_features(**inputs)
     return masked_image_features.cpu().detach().numpy()
+
+
+def get_query_embedding(image_text_model, text_query):
+    text_input_processed = image_text_model["processor"](text=text_query, padding="max_length", return_tensors="pt").to(
+        DEVICE)
+    with torch.no_grad():
+        sentence_embedding = image_text_model["model"].get_text_features(**text_input_processed)
+
+    return sentence_embedding.squeeze().cpu()
+
+
+def compute_cosine_similarity_scores(mask_embeddings, query_embedding):
+    cossim = torch.nn.CosineSimilarity(dim=0, eps=1e-3)
+    scores = {}
+    for mask_idx in mask_embeddings:
+        scores[mask_idx] = cossim(torch.from_numpy(mask_embeddings[mask_idx]), query_embedding)
+    return scores

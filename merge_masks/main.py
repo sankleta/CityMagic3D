@@ -54,9 +54,9 @@ class MaskInfo:
     
     @staticmethod
     def is_close_w_embedding(mask_info, other_mask_info, min_intersection_ratio, min_embedding_similarity):
-        cosine_similarity = np.dot(mask_info.embedding, other_mask_info.embedding) / \
+        cosine_similarity = np.dot(mask_info.embedding, other_mask_info.embedding.T) / \
             (np.linalg.norm(mask_info.embedding) * np.linalg.norm(other_mask_info.embedding))
-        return cosine_similarity > min_embedding_similarity and mask_info.is_close(other_mask_info, min_intersection_ratio)
+        return cosine_similarity > min_embedding_similarity and MaskInfo.is_close(mask_info, other_mask_info, min_intersection_ratio)
     
     @staticmethod
     def merge_masks(masks, key):

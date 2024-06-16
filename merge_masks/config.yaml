@@ -4,13 +4,14 @@ hydra:
     chdir: false
   run:
     dir: ./outputs/${hydra.job.name}/${now:%Y-%m-%d_%H-%M-%S}
-input_dir: /home/papjuli/code/ETH/3DV_project/CityMagic3D/outputs/instance_masks_from_images/2024-05-21_17-50-13
+input_dir: /home/papjuli/code/ETH/3DV_project/CityMagic3D/outputs/instance_masks_from_images/2024-05-25_01-01-17
 cam_info_path: /media/papjuli/Data/data/3DV_project/STPLS3D/Source_Images/Real_World/RA_CamInfoCC.xml
 point_cloud_path: /media/papjuli/Data/data/3DV_project/processed/STPLS3D/mesh/RA_1M.ply
 max_files: 1000
 min_mask_size: 10
-closeness_method: is_close_both_ways
+closeness_method: is_close_w_embedding
 closeness_args:
-  min_intersection_ratio: 0.6
+  min_intersection_ratio: 0.8
+  min_embedding_similarity: 0.8
 view_depth: 50
 bbox: [-125, -136, 132, 135] # [xmin, ymin, xmax, ymax]

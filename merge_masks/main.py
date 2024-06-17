@@ -1,4 +1,4 @@
-from collections import defaultdict
+from collections import defaultdict, Counter
 from dataclasses import dataclass
 import glob
 import logging
@@ -53,16 +53,28 @@ class MaskInfo:
         return intersection / union > min_iou
     
     @staticmethod
+    def is_close_w_embedding_both_ways(mask_info, other_mask_info, min_intersection_ratio, min_embedding_similarity):
+        cosine_similarity = np.dot(mask_info.embedding, other_mask_info.embedding.T) / \
+            (np.linalg.norm(mask_info.embedding) * np.linalg.norm(other_mask_info.embedding))
+        return cosine_similarity > min_embedding_similarity and MaskInfo.is_close_both_ways(mask_info, other_mask_info, min_intersection_ratio)
+    
+    @staticmethod
     def is_close_w_embedding(mask_info, other_mask_info, min_intersection_ratio, min_embedding_similarity):
         cosine_similarity = np.dot(mask_info.embedding, other_mask_info.embedding.T) / \
             (np.linalg.norm(mask_info.embedding) * np.linalg.norm(other_mask_info.embedding))
         return cosine_similarity > min_embedding_similarity and MaskInfo.is_close(mask_info, other_mask_info, min_intersection_ratio)
     
     @staticmethod
-    def merge_masks(masks, key):
-        merged_mask = set()
-        for mask in masks:
-            merged_mask.update(mask.point_set)
+    def merge_masks(masks, key, min_point_occurrence=2):
+        if min_point_occurrence == 1:
+            merged_mask = set()
+            for mask in masks:
+                merged_mask.update(mask.point_set)
+        else:
+            counter = Counter()
+            for mask in masks:
+                counter.update(mask.point_set)
+            merged_mask = set([point for point, count in counter.items() if count >= min_point_occurrence])
         merged_embedding_avg = np.average([mask.embedding for mask in masks], axis=0)
         merged_embedding_max = np.max([mask.embedding for mask in masks], axis=0)
         return MaskInfo("merged", 
@@ -189,7 +201,7 @@ def merge_by_intersection_ratio(cfg: DictConfig):
     merged_mask_infos = {}
     for i, connected_component in enumerate(nx.connected_components(graph)):
         mask_infos_in_component = [mask_infos_by_image[node[0]][node[1]] for node in connected_component]
-        merged_mask_info = MaskInfo.merge_masks(mask_infos_in_component, str(i))
+        merged_mask_info = MaskInfo.merge_masks(mask_infos_in_component, str(i), cfg.merging_min_point_occurrence)
         merged_mask_infos[str(i)] = merged_mask_info
 
     logger.info(f"Merged {len(merged_mask_infos)} masks.")

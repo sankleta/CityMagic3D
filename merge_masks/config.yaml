@@ -9,9 +9,10 @@ cam_info_path: /media/papjuli/Data/data/3DV_project/STPLS3D/Source_Images/Real_W
 point_cloud_path: /media/papjuli/Data/data/3DV_project/processed/STPLS3D/mesh/RA_1M.ply
 max_files: 1000
 min_mask_size: 10
-closeness_method: is_close_w_embedding
+closeness_method: is_close_w_embedding_both_ways
 closeness_args:
-  min_intersection_ratio: 0.8
+  min_intersection_ratio: 0.52
   min_embedding_similarity: 0.8
 view_depth: 50
 bbox: [-125, -136, 132, 135] # [xmin, ymin, xmax, ymax]
+merging_min_point_occurrence: 2

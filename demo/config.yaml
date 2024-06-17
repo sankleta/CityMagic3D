@@ -9,3 +9,4 @@ image_text_model: openai/clip-vit-base-patch32
 mesh_path: /Users/sankleta/Development/machine-perception/CityMagic3D/data/RA_1M.ply
 merged_masks: /Users/sankleta/Development/machine-perception/CityMagic3D/data/merged_masks.npz
 merged_embeddings: /Users/sankleta/Development/machine-perception/CityMagic3D/data/merged_embeddings__avg.npz
+number_of_top_instances: 20

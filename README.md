@@ -2,22 +2,19 @@
 
 ## Setup
 
-Clone the repository, create conda environment and install the required packages.
-Prepare the data and checkpoints.
-Put the right paths into config.yaml files.
+Clone the repository, create conda environment or venv from the conda_env.yml or requirements.txt.
 
-Please note the followings:
-* The **point cloud** should be provided as a `.ply` file and the points are expected to be in the z-up right-handed coordinate system.
-* The **camera intrinsics** and **camera poses** should be provided in a BlocksExchange `.xml` file.
-* The **RGB images** should be `.png`, `.jpg`, `.jpeg` format.
-
+You may run demo using our precomputed files and skipping the burden of calculations. See the Demo section below.
 
 ## Preprocessing
-Generate mes out of the point cloud using MeshLab using this instruction
+Generate the mesh out of the point cloud using MeshLab with this [instruction](...).
+
+You may use the one we've made for RA scene from [here](https://drive.google.com/file/d/1_hCSRk_LK7WxqdR_fLoVN7nH2Fsjv-ge/view?usp=sharing) 
 
 ## Generate masks from images
 
-Prerequisites: a point cloud and a mesh of the same scene, and a set of images.
+Prerequisites: a mesh of the scene (see above), a set of images with the camera intrinsics (get them from [here](https://drive.google.com/drive/folders/1nOtyygYrVCu0puRuJTFqN9-gv6kA2E4J) ).
+SAM checkpoint: [here](...) 
 
 To run in the root directory, by:
 ```
@@ -42,3 +39,19 @@ OUTPUT_FOLDER_DIRECTORY
 ## Assemble masks
 
 ## Demo
+The demo is a console application.
+[Here](https://drive.google.com/file/d/1_hCSRk_LK7WxqdR_fLoVN7nH2Fsjv-ge/view?usp=sharing) you can download the archive with all the files you need for the demo or use the files generated during the "Assemble masks" step.
+
+Unzip the files and fix the paths in demo/config.yaml according to your environment. Run demo/main.py. It takes some time to load the data and get ready for querying.
+Once it's ready, you'll get the message ```Data loaded. Enter your query. Query (type 'exit' to quit): ```. 
+
+Type your query and press Enter. 
+
+The window will pop up with the visualization showing the top 20 instance masks with the highest cosine similarity score colored into different colors. They might be small. 
+
+You may adjust the number of top masks in demo/config.yaml.
+
+Use [hotkeys](https://docs.pyvista.org/version/stable/api/plotting/plotting.html) to navigate the scene.
+
+Once the window with the visualization is closed, you'll get again the prompt to enter the query.
+

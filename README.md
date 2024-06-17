@@ -2,19 +2,40 @@
 
 ## Setup
 
-Clone the repository, create conda environment or venv from the conda_env.yml or requirements.txt.
+### Python environment
 
-You may run demo using our precomputed files and skipping the burden of calculations. See the Demo section below.
+Clone the repository, create conda environment and install the required packages using
+```
+conda env create -f conda_env.yml
+```
+(or alternatively, create a python venv and install the packages using pip from the `requirements.txt` file).
+
+You may run the demo using our precomputed files and skipping the burden of calculations. See the Demo section below.
+
+### Prepare the data and checkpoints. 
+
+We used the [STPLS3D](https://www.stpls3d.com/) dataset's real world part.
+
+Put the right paths into `config.yaml` files.
+
+Please note the followings:
+* The **point cloud** should be provided as a `.ply` file and the points are expected to be in the z-up right-handed coordinate system.
+* The **camera intrinsics** and **camera poses** should be provided in a BlocksExchange `.xml` file.
+* The **RGB images** should be `.png`, `.jpg`, `.jpeg` format.
+
+Checkpoints for SAM (see [here](https://github.com/facebookresearch/segment-anything?tab=readme-ov-file#model-checkpoints) ) and a vision-text coembedding model, like CLIP are also needed.
+
 
 ## Preprocessing
-Generate the mesh out of the point cloud using MeshLab with this [instruction](...).
+
+Generate mes out of the point cloud using MeshLab using [this](https://blogs.gre.ac.uk/designsupport/3d-realisation/laser-scanning/meshlab-point-cloud-to-mesh/) instruction. 
 
 You may use the one we've made for RA scene from [here](https://drive.google.com/file/d/1_hCSRk_LK7WxqdR_fLoVN7nH2Fsjv-ge/view?usp=sharing) 
+
 
 ## Generate masks from images
 
 Prerequisites: a mesh of the scene (see above), a set of images with the camera intrinsics (get them from [here](https://drive.google.com/drive/folders/1nOtyygYrVCu0puRuJTFqN9-gv6kA2E4J) ).
-SAM checkpoint: [here](...) 
 
 To run in the root directory, by:
 ```
@@ -37,6 +58,16 @@ OUTPUT_FOLDER_DIRECTORY
 ```
 
 ## Assemble masks
+
+This phase can be run by
+```
+python -m merge_masks.main
+```
+
+Don't forget to set the parameters in `merge_masks/cofig.yaml`. A different config file can be set as an argument of the above command as for the first phase.
+As `input_dir` parameter, an output directory of the first phase is reequired.
+The point cloud and the camera info files should be the same as in the first phase.
+
 
 ## Demo
 The demo is a console application.

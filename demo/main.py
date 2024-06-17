@@ -26,7 +26,7 @@ def load_data(cfg):
 def main(cfg: DictConfig):
     print("Loading data...")
     mesh, mask_embeddings, mask_text_embeddings, model = load_data(cfg)
-    print("Data loaded. Enter your query:")
+    print("Data loaded. Enter your query.")
 
     while True:
         query = input("Query (type 'exit' to quit): ")
@@ -47,7 +47,7 @@ def main(cfg: DictConfig):
         # plotter.subplot(0, 1)
         plotter.add_mesh(mesh, scalars='RGBA', rgb=True)
         # Add masks as points on top
-        show_top_n_instances(plotter, mesh, scores, mask_embeddings, 20)
+        show_top_n_instances(plotter, mesh, scores, mask_embeddings, cfg.number_of_top_instances)
         plotter.show()
 
 
